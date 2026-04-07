@@ -32,6 +32,10 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - 7 leagues: PL, CL, PD, SA, BL1, FL1, PPL
 - Kid-friendly "Vibrant Play" design with Fredoka/Nunito fonts
 - PWA manifest configured
+- **Service worker** with offline caching (network-first for API, cache-first for assets, stale-while-revalidate for team crests)
+- Offline banner indicator when device is disconnected
+- Apple PWA meta tags for iPad home screen install
+- Auto-update mechanism when new service worker is deployed
 
 ## Prioritized Backlog
 ### P0 (Done)
