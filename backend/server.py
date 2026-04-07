@@ -1,89 +1,458 @@
-from fastapi import FastAPI, APIRouter
 from dotenv import load_dotenv
-from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
-import os
-import logging
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
-from typing import List
-import uuid
-from datetime import datetime, timezone
-
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response
+from starlette.middleware.cors import CORSMiddleware
+from motor.motor_asyncio import AsyncIOMotorClient
+import os
+import logging
+import bcrypt
+import jwt
+import httpx
+import json
+import secrets
+from datetime import datetime, timezone, timedelta
+from pydantic import BaseModel
+from typing import Optional
+from bson import ObjectId
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+# MongoDB
 mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+mongo_client = AsyncIOMotorClient(mongo_url)
+db = mongo_client[os.environ['DB_NAME']]
 
-# Create the main app without a prefix
+# Football API
+FOOTBALL_API_KEY = os.environ.get('FOOTBALL_API_KEY', '')
+FOOTBALL_API_BASE = "https://api.football-data.org/v4"
+COMPETITIONS = "PL,CL,PD,SA,BL1,FL1,PPL"
+
+LEAGUES = {
+    "PL": {"name": "Premier League", "country": "England"},
+    "CL": {"name": "Champions League", "country": "Europe"},
+    "PD": {"name": "La Liga", "country": "Spain"},
+    "SA": {"name": "Serie A", "country": "Italy"},
+    "BL1": {"name": "Bundesliga", "country": "Germany"},
+    "FL1": {"name": "Ligue 1", "country": "France"},
+    "PPL": {"name": "Primeira Liga", "country": "Portugal"},
+}
+
+LEAGUE_COLORS = {
+    "PL": "#7C3AED",
+    "CL": "#1E3A5F",
+    "PD": "#F97316",
+    "SA": "#059669",
+    "BL1": "#DC2626",
+    "FL1": "#1D4ED8",
+    "PPL": "#15803D",
+}
+
 app = FastAPI()
-
-# Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
+# ============ AUTH ============
+JWT_ALGORITHM = "HS256"
 
-# Define Models
-class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
-    
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+def get_jwt_secret():
+    return os.environ["JWT_SECRET"]
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
-# Add your routes to the router instead of directly to app
-@api_router.get("/")
-async def root():
-    return {"message": "Hello World"}
+def verify_password(plain: str, hashed: str) -> bool:
+    return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
 
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.model_dump()
-    status_obj = StatusCheck(**status_dict)
-    
-    # Convert to dict and serialize datetime to ISO string for MongoDB
-    doc = status_obj.model_dump()
-    doc['timestamp'] = doc['timestamp'].isoformat()
-    
-    _ = await db.status_checks.insert_one(doc)
-    return status_obj
+def create_access_token(user_id: str, email: str) -> str:
+    payload = {"sub": user_id, "email": email, "exp": datetime.now(timezone.utc) + timedelta(hours=1), "type": "access"}
+    return jwt.encode(payload, get_jwt_secret(), algorithm=JWT_ALGORITHM)
 
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
-    status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
-    
-    # Convert ISO string timestamps back to datetime objects
-    for check in status_checks:
-        if isinstance(check['timestamp'], str):
-            check['timestamp'] = datetime.fromisoformat(check['timestamp'])
-    
-    return status_checks
+def create_refresh_token(user_id: str) -> str:
+    payload = {"sub": user_id, "exp": datetime.now(timezone.utc) + timedelta(days=7), "type": "refresh"}
+    return jwt.encode(payload, get_jwt_secret(), algorithm=JWT_ALGORITHM)
 
-# Include the router in the main app
+async def get_current_user(request: Request):
+    token = request.cookies.get("access_token")
+    if not token:
+        auth = request.headers.get("Authorization", "")
+        if auth.startswith("Bearer "):
+            token = auth[7:]
+    if not token:
+        raise HTTPException(401, "Not authenticated")
+    try:
+        payload = jwt.decode(token, get_jwt_secret(), algorithms=[JWT_ALGORITHM])
+        if payload.get("type") != "access":
+            raise HTTPException(401, "Invalid token type")
+        user = await db.users.find_one({"_id": ObjectId(payload["sub"])})
+        if not user:
+            raise HTTPException(401, "User not found")
+        user["_id"] = str(user["_id"])
+        user.pop("password_hash", None)
+        return user
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(401, "Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(401, "Invalid token")
+
+def set_auth_cookies(response: Response, user_id: str, email: str):
+    access = create_access_token(user_id, email)
+    refresh = create_refresh_token(user_id)
+    response.set_cookie("access_token", access, httponly=True, secure=False, samesite="lax", max_age=3600, path="/")
+    response.set_cookie("refresh_token", refresh, httponly=True, secure=False, samesite="lax", max_age=604800, path="/")
+
+class RegisterInput(BaseModel):
+    name: str
+    email: str
+    password: str
+
+class LoginInput(BaseModel):
+    email: str
+    password: str
+
+class FavoriteInput(BaseModel):
+    type: str
+    item_id: str
+    name: str
+    crest: str = ""
+    league_code: str = ""
+
+@api_router.post("/auth/register")
+async def register(data: RegisterInput, response: Response):
+    email = data.email.lower().strip()
+    if await db.users.find_one({"email": email}):
+        raise HTTPException(400, "Email already registered")
+    hashed = hash_password(data.password)
+    user_doc = {
+        "name": data.name.strip(),
+        "email": email,
+        "password_hash": hashed,
+        "role": "user",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    result = await db.users.insert_one(user_doc)
+    user_id = str(result.inserted_id)
+    set_auth_cookies(response, user_id, email)
+    return {"_id": user_id, "name": data.name.strip(), "email": email, "role": "user"}
+
+@api_router.post("/auth/login")
+async def login(data: LoginInput, response: Response):
+    email = data.email.lower().strip()
+    user = await db.users.find_one({"email": email})
+    if not user or not verify_password(data.password, user["password_hash"]):
+        raise HTTPException(401, "Invalid email or password")
+    user_id = str(user["_id"])
+    set_auth_cookies(response, user_id, email)
+    return {"_id": user_id, "name": user["name"], "email": email, "role": user.get("role", "user")}
+
+@api_router.post("/auth/logout")
+async def logout(response: Response):
+    response.delete_cookie("access_token", path="/")
+    response.delete_cookie("refresh_token", path="/")
+    return {"message": "Logged out"}
+
+@api_router.get("/auth/me")
+async def get_me(request: Request):
+    return await get_current_user(request)
+
+@api_router.post("/auth/refresh")
+async def refresh_token(request: Request, response: Response):
+    token = request.cookies.get("refresh_token")
+    if not token:
+        raise HTTPException(401, "No refresh token")
+    try:
+        payload = jwt.decode(token, get_jwt_secret(), algorithms=[JWT_ALGORITHM])
+        if payload.get("type") != "refresh":
+            raise HTTPException(401, "Invalid token type")
+        user = await db.users.find_one({"_id": ObjectId(payload["sub"])})
+        if not user:
+            raise HTTPException(401, "User not found")
+        user_id = str(user["_id"])
+        access = create_access_token(user_id, user["email"])
+        response.set_cookie("access_token", access, httponly=True, secure=False, samesite="lax", max_age=3600, path="/")
+        return {"message": "Token refreshed"}
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(401, "Refresh token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(401, "Invalid refresh token")
+
+# ============ FOOTBALL API ============
+async def fetch_football_data(endpoint, cache_minutes=5, params=None):
+    cache_key = f"football:{endpoint}:{json.dumps(params or {}, sort_keys=True)}"
+    cached = await db.api_cache.find_one(
+        {"key": cache_key, "expires_at": {"$gt": datetime.now(timezone.utc)}},
+        {"_id": 0}
+    )
+    if cached:
+        return cached["data"]
+
+    headers = {"X-Auth-Token": FOOTBALL_API_KEY}
+    try:
+        async with httpx.AsyncClient() as http:
+            resp = await http.get(
+                f"{FOOTBALL_API_BASE}{endpoint}",
+                headers=headers, params=params, timeout=15.0
+            )
+            if resp.status_code == 429:
+                stale = await db.api_cache.find_one({"key": cache_key}, {"_id": 0})
+                if stale:
+                    return stale["data"]
+                raise HTTPException(429, "Too many requests. Please wait a moment!")
+            if resp.status_code != 200:
+                logger.error(f"Football API {resp.status_code}: {resp.text[:300]}")
+                stale = await db.api_cache.find_one({"key": cache_key}, {"_id": 0})
+                if stale:
+                    return stale["data"]
+                raise HTTPException(502, "Could not fetch football data")
+            data = resp.json()
+    except httpx.RequestError as e:
+        logger.error(f"Football API request error: {e}")
+        stale = await db.api_cache.find_one({"key": cache_key}, {"_id": 0})
+        if stale:
+            return stale["data"]
+        raise HTTPException(502, "Football data service unavailable")
+
+    await db.api_cache.update_one(
+        {"key": cache_key},
+        {"$set": {"data": data, "expires_at": datetime.now(timezone.utc) + timedelta(minutes=cache_minutes), "updated_at": datetime.now(timezone.utc)}},
+        upsert=True
+    )
+    return data
+
+def generate_match_story(match):
+    home = match.get("homeTeam", {})
+    away = match.get("awayTeam", {})
+    home_name = home.get("shortName") or home.get("name", "Home")
+    away_name = away.get("shortName") or away.get("name", "Away")
+    ft = match.get("score", {}).get("fullTime", {})
+    home_score = ft.get("home")
+    away_score = ft.get("away")
+    if home_score is None or away_score is None:
+        return None
+
+    total = home_score + away_score
+    diff = abs(home_score - away_score)
+
+    if home_score > away_score:
+        if diff >= 3:
+            headline = f"{home_name} crushes {away_name} in dominant display!"
+        elif diff == 1:
+            headline = f"{home_name} edges past {away_name} in tight game!"
+        else:
+            headline = f"{home_name} wins comfortably against {away_name}!"
+    elif away_score > home_score:
+        if diff >= 3:
+            headline = f"{away_name} demolishes {home_name} away from home!"
+        elif diff == 1:
+            headline = f"{away_name} sneaks a win at {home_name}!"
+        else:
+            headline = f"{away_name} triumphs at {home_name}!"
+    else:
+        if total == 0:
+            headline = f"{home_name} and {away_name} play out goalless draw"
+        else:
+            headline = f"Exciting {home_score}-{away_score} draw between {home_name} and {away_name}!"
+
+    if total >= 5:
+        flavor = "A thrilling goal-fest that had fans on the edge of their seats!"
+    elif total >= 3:
+        flavor = "An entertaining match with plenty of action!"
+    elif total == 0:
+        flavor = "A defensive masterclass from both sides."
+    else:
+        flavor = "A competitive battle on the pitch!"
+
+    comp = match.get("competition", {})
+    return {
+        "match_id": match.get("id"),
+        "headline": headline,
+        "summary": f"The final score was {home_score}-{away_score}. {flavor}",
+        "home_team": {"name": home_name, "crest": home.get("crest", "")},
+        "away_team": {"name": away_name, "crest": away.get("crest", "")},
+        "score": {"home": home_score, "away": away_score},
+        "competition": {"name": comp.get("name", ""), "code": comp.get("code", ""), "emblem": comp.get("emblem", "")},
+        "date": match.get("utcDate", ""),
+        "matchday": match.get("matchday"),
+    }
+
+# Football endpoints
+@api_router.get("/leagues")
+async def get_leagues():
+    leagues = []
+    for code, info in LEAGUES.items():
+        leagues.append({
+            "code": code, "name": info["name"],
+            "country": info["country"], "color": LEAGUE_COLORS.get(code, "#0EA5E9")
+        })
+    return leagues
+
+@api_router.get("/matches/today")
+async def get_today_matches():
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    data = await fetch_football_data("/matches", cache_minutes=3, params={
+        "dateFrom": today, "dateTo": today, "competitions": COMPETITIONS
+    })
+    return data.get("matches", [])
+
+@api_router.get("/matches/upcoming")
+async def get_upcoming_matches(days: int = 7):
+    today = datetime.now(timezone.utc)
+    date_from = today.strftime("%Y-%m-%d")
+    date_to = (today + timedelta(days=min(days, 14))).strftime("%Y-%m-%d")
+    data = await fetch_football_data("/matches", cache_minutes=10, params={
+        "dateFrom": date_from, "dateTo": date_to, "competitions": COMPETITIONS
+    })
+    matches = [m for m in data.get("matches", []) if m.get("status") in ("SCHEDULED", "TIMED")]
+    return matches[:30]
+
+@api_router.get("/matches/recent")
+async def get_recent_matches(days: int = 7):
+    today = datetime.now(timezone.utc)
+    date_from = (today - timedelta(days=min(days, 14))).strftime("%Y-%m-%d")
+    date_to = today.strftime("%Y-%m-%d")
+    data = await fetch_football_data("/matches", cache_minutes=5, params={
+        "dateFrom": date_from, "dateTo": date_to, "competitions": COMPETITIONS
+    })
+    matches = [m for m in data.get("matches", []) if m.get("status") == "FINISHED"]
+    matches.sort(key=lambda x: x.get("utcDate", ""), reverse=True)
+    return matches[:30]
+
+@api_router.get("/leagues/{code}/matches")
+async def get_league_matches(code: str, status: Optional[str] = None, limit: int = 20):
+    if code not in LEAGUES:
+        raise HTTPException(404, "League not found")
+    params = {}
+    if status:
+        params["status"] = status
+    data = await fetch_football_data(f"/competitions/{code}/matches", cache_minutes=5, params=params or None)
+    matches = data.get("matches", [])
+    if status == "FINISHED":
+        matches.sort(key=lambda x: x.get("utcDate", ""), reverse=True)
+    return matches[:limit]
+
+@api_router.get("/leagues/{code}/standings")
+async def get_league_standings(code: str):
+    if code not in LEAGUES:
+        raise HTTPException(404, "League not found")
+    try:
+        data = await fetch_football_data(f"/competitions/{code}/standings", cache_minutes=15)
+        standings = data.get("standings", [])
+        result = []
+        for s in standings:
+            if s.get("type") == "TOTAL":
+                result.append({
+                    "stage": s.get("stage", ""),
+                    "group": s.get("group", ""),
+                    "table": s.get("table", [])
+                })
+        return result if result else [{"stage": "", "group": "", "table": standings[0].get("table", [])}] if standings else []
+    except HTTPException as e:
+        if e.status_code in (403, 404):
+            return []
+        raise
+
+@api_router.get("/leagues/{code}/scorers")
+async def get_league_scorers(code: str, limit: int = 15):
+    if code not in LEAGUES:
+        raise HTTPException(404, "League not found")
+    try:
+        data = await fetch_football_data(f"/competitions/{code}/scorers", cache_minutes=30)
+        return data.get("scorers", [])[:limit]
+    except HTTPException as e:
+        if e.status_code in (403, 404):
+            return []
+        raise
+
+@api_router.get("/stories")
+async def get_stories():
+    today = datetime.now(timezone.utc)
+    date_from = (today - timedelta(days=5)).strftime("%Y-%m-%d")
+    date_to = today.strftime("%Y-%m-%d")
+    try:
+        data = await fetch_football_data("/matches", cache_minutes=10, params={
+            "dateFrom": date_from, "dateTo": date_to,
+            "status": "FINISHED", "competitions": COMPETITIONS
+        })
+    except Exception:
+        return []
+    stories = []
+    for match in data.get("matches", []):
+        story = generate_match_story(match)
+        if story:
+            stories.append(story)
+    stories.sort(key=lambda x: x.get("date", ""), reverse=True)
+    return stories[:20]
+
+# ============ FAVORITES ============
+@api_router.get("/favorites")
+async def get_favorites(request: Request):
+    user = await get_current_user(request)
+    favs = await db.favorites.find({"user_id": user["_id"]}, {"_id": 0}).to_list(100)
+    return favs
+
+@api_router.post("/favorites")
+async def toggle_favorite(data: FavoriteInput, request: Request):
+    user = await get_current_user(request)
+    existing = await db.favorites.find_one({
+        "user_id": user["_id"], "type": data.type, "item_id": data.item_id
+    })
+    if existing:
+        await db.favorites.delete_one({"_id": existing["_id"]})
+        return {"action": "removed", "type": data.type, "item_id": data.item_id}
+    fav_doc = {
+        "user_id": user["_id"], "type": data.type, "item_id": data.item_id,
+        "name": data.name, "crest": data.crest, "league_code": data.league_code,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.favorites.insert_one(fav_doc)
+    return {"action": "added", "type": data.type, "item_id": data.item_id, "name": data.name}
+
+# ============ STARTUP ============
+async def seed_admin():
+    admin_email = os.environ.get("ADMIN_EMAIL", "admin@example.com")
+    admin_password = os.environ.get("ADMIN_PASSWORD", "admin123")
+    existing = await db.users.find_one({"email": admin_email})
+    if existing is None:
+        hashed = hash_password(admin_password)
+        await db.users.insert_one({
+            "email": admin_email, "password_hash": hashed,
+            "name": "Admin", "role": "admin",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        logger.info(f"Admin seeded: {admin_email}")
+    elif not verify_password(admin_password, existing["password_hash"]):
+        await db.users.update_one(
+            {"email": admin_email},
+            {"$set": {"password_hash": hash_password(admin_password)}}
+        )
+
+@app.on_event("startup")
+async def startup():
+    await db.users.create_index("email", unique=True)
+    await db.api_cache.create_index("key", unique=True)
+    await db.api_cache.create_index("expires_at", expireAfterSeconds=0)
+    await db.favorites.create_index([("user_id", 1), ("type", 1), ("item_id", 1)], unique=True)
+    await seed_admin()
+    os.makedirs("/app/memory", exist_ok=True)
+    admin_email = os.environ.get("ADMIN_EMAIL", "admin@example.com")
+    admin_password = os.environ.get("ADMIN_PASSWORD", "admin123")
+    with open("/app/memory/test_credentials.md", "w") as f:
+        f.write(f"# Test Credentials\n\n## Admin\n- Email: {admin_email}\n- Password: {admin_password}\n- Role: admin\n\n")
+        f.write("## Auth Endpoints\n- POST /api/auth/register\n- POST /api/auth/login\n- POST /api/auth/logout\n- GET /api/auth/me\n- POST /api/auth/refresh\n")
+
+@app.on_event("shutdown")
+async def shutdown():
+    mongo_client.close()
+
 app.include_router(api_router)
 
 app.add_middleware(
     CORSMiddleware,
+    allow_origins=[os.environ.get("FRONTEND_URL", "http://localhost:3000")],
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()

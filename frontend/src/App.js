@@ -1,53 +1,50 @@
-import { useEffect } from "react";
 import "@/App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import Navigation from "@/components/Navigation";
+import LoginPage from "@/pages/LoginPage";
+import HomePage from "@/pages/HomePage";
+import LeagueDetail, { LeaguesList } from "@/pages/LeaguePage";
+import FavoritesPage from "@/pages/FavoritesPage";
+import { Toaster } from "@/components/ui/sonner";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+function AppLayout() {
+  const { user, loading } = useAuth();
 
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
-    }
-  };
-
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F0F9FF]">
+        <div className="text-center animate-bounce-in">
+          <h1 className="text-4xl font-black text-sky-500 mb-2">Loading...</h1>
+          <p className="text-slate-500 font-semibold">Getting the latest scores</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <header className="App-header">
-        <a
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
+    <div className="min-h-screen bg-[#F0F9FF] pb-24">
+      <Routes>
+        <Route path="/login" element={user ? <Navigate to="/" /> : <LoginPage />} />
+        <Route path="/" element={<HomePage />} />
+        <Route path="/leagues" element={<LeaguesList />} />
+        <Route path="/league/:code" element={<LeagueDetail />} />
+        <Route path="/favorites" element={user ? <FavoritesPage /> : <Navigate to="/login" />} />
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
+      <Navigation />
     </div>
   );
-};
+}
 
 function App() {
   return (
-    <div className="App">
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </div>
+    <BrowserRouter>
+      <AuthProvider>
+        <AppLayout />
+        <Toaster position="top-center" richColors />
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 
