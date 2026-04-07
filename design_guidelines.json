@@ -1,0 +1,84 @@
+{
+  "theme": "light",
+  "archetype": "6 (Vibrant Play)",
+  "context": "Tablet-optimized PWA for 10-year-old kids. Focus on large touch targets, scannable data, and energetic visual feedback.",
+  "typography": {
+    "heading_font": "Fredoka",
+    "body_font": "Nunito",
+    "hierarchy": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight",
+      "h3": "text-xl sm:text-2xl font-bold",
+      "h4": "text-lg sm:text-xl font-bold",
+      "body": "text-base sm:text-lg font-semibold leading-relaxed",
+      "small": "text-sm font-bold uppercase tracking-widest"
+    },
+    "guidelines": "Never center all text. Use left-alignment for stats/data. Headings must have high contrast and tight letter spacing."
+  },
+  "colors": {
+    "background": "#F0F9FF",
+    "surface": "#FFFFFF",
+    "primary": "#0EA5E9",
+    "primary_hover": "#0284C7",
+    "secondary": "#FACC15",
+    "accent_live": "#22C55E",
+    "accent_danger": "#EF4444",
+    "text_main": "#0F172A",
+    "text_muted": "#475569",
+    "border": "#CBD5E1"
+  },
+  "layout_and_spacing": {
+    "spacing_scale": "p-4, p-6, p-8. Use p-6 inside cards as minimum to prevent text collision.",
+    "bento_grid": "grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6. Hero content (Live match/Top news) spans 2 columns (col-span-1 md:col-span-2).",
+    "border_radius": "rounded-3xl for major containers, rounded-2xl for inner widgets, rounded-full for buttons and pills.",
+    "shadows": {
+      "card": "shadow-[0_8px_0_0_#CBD5E1]",
+      "card_hover": "shadow-[0_12px_0_0_#CBD5E1] -translate-y-1",
+      "button_primary": "shadow-[0_4px_0_0_#0369A1]",
+      "button_primary_active": "shadow-none translate-y-1"
+    }
+  },
+  "components": {
+    "cards": "Solid white background, rounded-3xl, 2px solid border (border-slate-300). Must include the chunky bottom offset shadow to feel tactile and 'toy-like'.",
+    "buttons": "Chunky, rounded-full, bright primary/secondary color, white text. Must have a darker offset shadow. Active state physically presses down by removing the shadow and translating Y.",
+    "navigation": "Thick side navigation for tablet (or a prominent bottom nav). Large icons, bold labels. Active state gets a bright yellow or blue background highlight.",
+    "league_selector": "Horizontal scrollable flex row of rounded-full pills. Selected state is solid primary color, unselected is outline/white.",
+    "data_display": "For standings and top scorers, avoid dense excel-like grids. Use striped rows (bg-slate-50 for even rows), large avatars/logos, and big typography for numbers. Padding p-3 or p-4 per row.",
+    "badges": "For live matches, use a vibrant green pill badge (bg-green-500) with an optional pulse animation."
+  },
+  "motion_and_interactions": {
+    "hover": "Playful and bouncy. Cards scale slightly (scale-[1.02]) and increase shadow.",
+    "active": "Buttons press into the screen (translate-y-1) for physical feedback.",
+    "transitions": "transition-all duration-200 ease-out"
+  },
+  "media": {
+    "images": [
+      {
+        "category": "hero_stadium",
+        "url": "https://images.unsplash.com/photo-1542652420-d071027a88bb?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzZ8MHwxfHNlYXJjaHwyfHxldXJvcGVhbiUyMGZvb3RiYWxsJTIwc3RhZGl1bXxlbnwwfHx8fDE3NzU1OTY2MDN8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Football field stadium under bright lights. Perfect for the onboarding or login screen background. (Use an overlay like bg-blue-900/60 to keep text readable)."
+      },
+      {
+        "category": "kids_playing_placeholder",
+        "url": "https://images.unsplash.com/photo-1772388196724-71af87cee7df?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NjZ8MHwxfHNlYXJjaHwyfHxmb290YmFsbCUyMHBpdGNoJTIwZ3Jhc3N8ZW58MHx8fHwxNzc1NTk2NjAzfDA&ixlib=rb-4.1.0&q=85",
+        "description": "Person kicking a soccer ball. Great default image for news stories without a thumbnail, or empty states."
+      },
+      {
+        "category": "trophy",
+        "url": "https://images.unsplash.com/photo-1518091043644-c1d4457512c6?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNTl8MHwxfHNlYXJjaHwxfHxmb290YmFsbCUyMHRyb3BoeXxlbnwwfHx8fDE3NzU1OTY2MTd8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Gold football trophy. Use this in the Top Scorers widget/card header to make it visually exciting."
+      }
+    ],
+    "icons_library": "lucide-react. IMPORTANT: Set strokeWidth={2.5} or {3} on all icons so they look chunky and kid-friendly, matching the typography."
+  },
+  "instructions_to_main_agent": [
+    "You are building a Kid's Sports PWA Dashboard. Adopt the 'Vibrant Play' archetype. NO boring corporate SaaS styling.",
+    "Include Fredoka (headings) and Nunito (body) fonts via Google Fonts.",
+    "Construct a Bento Grid layout. Tablet view (md:) is the primary target. Make sure interactive touch targets are at least 48px tall.",
+    "Implement the 'tactile' card and button styles exactly as specified (2px borders with thick, hard shadows using Tailwind arbitrary shadow values).",
+    "Include a 'data-testid' attribute on all interactive elements (buttons, inputs, tabs, favorite toggles).",
+    "For the simple login/favorites screen, create a fun, welcoming 'clubhouse' feel, utilizing the hero_stadium image with a dark-blue overlay.",
+    "Do not use generic gray placeholders. Use the provided images, and heavily utilize the bright brand colors (sky blue, sunny yellow, vibrant green) to direct attention.",
+    "Ensure live match indicators are extremely obvious (glowing/pulsing green elements)."
+  ]
+}
