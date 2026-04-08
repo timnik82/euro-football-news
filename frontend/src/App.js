@@ -1,7 +1,9 @@
 import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { LanguageProvider, useLanguage } from "@/contexts/LanguageContext";
 import Navigation from "@/components/Navigation";
+import SettingsGear from "@/components/SettingsGear";
 import LoginPage from "@/pages/LoginPage";
 import HomePage from "@/pages/HomePage";
 import LeagueDetail, { LeaguesList } from "@/pages/LeaguePage";
@@ -12,6 +14,7 @@ import { WifiOff } from "lucide-react";
 
 function OfflineBanner() {
   const isOnline = useOnlineStatus();
+  const { t } = useLanguage();
   if (isOnline) return null;
   return (
     <div
@@ -19,21 +22,22 @@ function OfflineBanner() {
       className="fixed top-0 left-0 right-0 z-[100] bg-amber-400 text-amber-900 px-4 py-2.5 flex items-center justify-center gap-2 font-bold text-sm shadow-md animate-slide-up"
     >
       <WifiOff size={16} strokeWidth={3} />
-      <span>You're offline - showing cached data</span>
+      <span>{t("offline")}</span>
     </div>
   );
 }
 
 function AppLayout() {
   const { user, loading } = useAuth();
+  const { t } = useLanguage();
   const isOnline = useOnlineStatus();
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F0F9FF]">
         <div className="text-center animate-bounce-in">
-          <h1 className="text-4xl font-black text-sky-500 mb-2">Loading...</h1>
-          <p className="text-slate-500 font-semibold">Getting the latest scores</p>
+          <h1 className="text-4xl font-black text-sky-500 mb-2">{t("loading")}</h1>
+          <p className="text-slate-500 font-semibold">{t("loadingSub")}</p>
         </div>
       </div>
     );
@@ -42,6 +46,7 @@ function AppLayout() {
   return (
     <div className={`min-h-screen bg-[#F0F9FF] pb-24 ${!isOnline ? 'pt-10' : ''}`}>
       <OfflineBanner />
+      <SettingsGear />
       <Routes>
         <Route path="/login" element={user ? <Navigate to="/" /> : <LoginPage />} />
         <Route path="/" element={<HomePage />} />
@@ -58,10 +63,12 @@ function AppLayout() {
 function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <AppLayout />
-        <Toaster position="top-center" richColors />
-      </AuthProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <AppLayout />
+          <Toaster position="top-center" richColors />
+        </AuthProvider>
+      </LanguageProvider>
     </BrowserRouter>
   );
 }

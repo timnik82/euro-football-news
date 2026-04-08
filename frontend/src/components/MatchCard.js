@@ -1,9 +1,10 @@
 import { format, parseISO, isToday, isTomorrow } from "date-fns";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function MatchCard({ match }) {
+  const { t, dateLocale } = useLanguage();
   const isLive = match.status === "IN_PLAY" || match.status === "PAUSED";
   const isFinished = match.status === "FINISHED";
-  const isScheduled = match.status === "SCHEDULED" || match.status === "TIMED";
 
   const ft = match.score?.fullTime || {};
   const homeScore = isLive ? (match.score?.fullTime?.home ?? match.score?.halfTime?.home ?? "-") : ft.home;
@@ -13,7 +14,7 @@ export default function MatchCard({ match }) {
   let timeLabel = "";
   try {
     const d = parseISO(match.utcDate);
-    dateLabel = isToday(d) ? "Today" : isTomorrow(d) ? "Tomorrow" : format(d, "MMM d");
+    dateLabel = isToday(d) ? t("match.today") : isTomorrow(d) ? t("match.tomorrow") : format(d, "MMM d");
     timeLabel = format(d, "HH:mm");
   } catch {
     dateLabel = "";
@@ -25,7 +26,6 @@ export default function MatchCard({ match }) {
       data-testid={`match-card-${match.id}`}
       className={`card-tactile p-4 ${isLive ? "border-green-400" : ""}`}
     >
-      {/* Competition + Status */}
       <div className="flex items-center gap-2 mb-3">
         {match.competition?.emblem && (
           <img src={match.competition.emblem} alt="" className="w-5 h-5 object-contain" />
@@ -35,22 +35,21 @@ export default function MatchCard({ match }) {
         </span>
         {isLive && (
           <span className="ml-auto bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full animate-pulse-live flex-shrink-0">
-            LIVE
+            {t("match.live")}
           </span>
         )}
         {isFinished && (
           <span className="ml-auto bg-slate-700 text-white text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0">
-            FT
+            {t("match.ft")}
           </span>
         )}
         {match.status === "PAUSED" && (
           <span className="ml-auto bg-yellow-500 text-white text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0">
-            HT
+            {t("match.ht")}
           </span>
         )}
       </div>
 
-      {/* Teams and Score */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5 flex-1 min-w-0">
           {match.homeTeam?.crest && (
@@ -84,10 +83,9 @@ export default function MatchCard({ match }) {
         </div>
       </div>
 
-      {/* Matchday */}
       {match.matchday && (
         <div className="text-center text-xs text-slate-400 font-semibold mt-2">
-          Matchday {match.matchday}
+          {t("match.matchday")} {match.matchday}
         </div>
       )}
     </div>

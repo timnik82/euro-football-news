@@ -36,6 +36,9 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - Offline banner indicator when device is disconnected
 - Apple PWA meta tags for iPad home screen install
 - Auto-update mechanism when new service worker is deployed
+- **Multi-language support** (English, Russian, Portuguese) with settings gear toggle
+- Localized UI: navigation, page titles, match statuses, date formatting, story headlines
+- Language preference persisted in localStorage
 
 ## Prioritized Backlog
 ### P0 (Done)
