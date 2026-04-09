@@ -1,7 +1,7 @@
 import { format, parseISO, isToday, isTomorrow } from "date-fns";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-export default function MatchCard({ match }) {
+export default function MatchCard({ match, onClick }) {
   const { t, dateLocale } = useLanguage();
   const isLive = match.status === "IN_PLAY" || match.status === "PAUSED";
   const isFinished = match.status === "FINISHED";
@@ -24,7 +24,9 @@ export default function MatchCard({ match }) {
   return (
     <div
       data-testid={`match-card-${match.id}`}
-      className={`card-tactile p-4 ${isLive ? "border-green-400" : ""}`}
+      className={`card-tactile p-4 cursor-pointer ${isLive ? "border-green-400" : ""}`}
+      onClick={() => onClick && onClick(match.id)}
+      onClick={() => onClick && onClick(match.id)}
     >
       <div className="flex items-center gap-2 mb-3">
         {match.competition?.emblem && (

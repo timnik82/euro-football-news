@@ -290,6 +290,52 @@ async def get_leagues():
         })
     return leagues
 
+@api_router.get("/matches/{match_id}")
+async def get_match_detail(match_id: int):
+    match_data = await fetch_football_data(f"/matches/{match_id}", cache_minutes=5)
+    # Fetch head2head
+    h2h = None
+    try:
+        h2h = await fetch_football_data(f"/matches/{match_id}/head2head", cache_minutes=30, params={"limit": 5})
+    except Exception:
+        pass
+    # Clean response
+    result = {
+        "id": match_data.get("id"),
+        "competition": match_data.get("competition"),
+        "homeTeam": match_data.get("homeTeam"),
+        "awayTeam": match_data.get("awayTeam"),
+        "score": match_data.get("score"),
+        "status": match_data.get("status"),
+        "utcDate": match_data.get("utcDate"),
+        "matchday": match_data.get("matchday"),
+        "stage": match_data.get("stage"),
+        "venue": match_data.get("venue"),
+        "referees": match_data.get("referees", []),
+    }
+    if h2h:
+        agg = h2h.get("aggregates", {})
+        result["h2h"] = {
+            "totalMatches": agg.get("numberOfMatches", 0),
+            "homeWins": agg.get("homeTeam", {}).get("wins", 0),
+            "awayWins": agg.get("awayTeam", {}).get("wins", 0),
+            "draws": agg.get("draws", 0),
+            "recentMatches": [
+                {
+                    "homeTeam": m.get("homeTeam", {}).get("shortName", ""),
+                    "awayTeam": m.get("awayTeam", {}).get("shortName", ""),
+                    "homeScore": m.get("score", {}).get("fullTime", {}).get("home"),
+                    "awayScore": m.get("score", {}).get("fullTime", {}).get("away"),
+                    "date": m.get("utcDate", ""),
+                    "homeCrest": m.get("homeTeam", {}).get("crest", ""),
+                    "awayCrest": m.get("awayTeam", {}).get("crest", ""),
+                }
+                for m in h2h.get("matches", [])[:5]
+            ],
+        }
+    return result
+
+
 @api_router.get("/matches/today")
 async def get_today_matches():
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")

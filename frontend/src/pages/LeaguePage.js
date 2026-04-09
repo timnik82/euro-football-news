@@ -4,6 +4,7 @@ import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import MatchCard from "@/components/MatchCard";
+import MatchDetailModal from "@/components/MatchDetailModal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
@@ -70,6 +71,7 @@ export default function LeagueDetail() {
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
   const [favorites, setFavorites] = useState([]);
+  const [selectedMatchId, setSelectedMatchId] = useState(null);
 
   const leagueName = {
     PL: "Premier League", CL: "Champions League", PD: "La Liga",
@@ -252,7 +254,7 @@ export default function LeagueDetail() {
                   <Star size={20} strokeWidth={2.5} className="text-sky-500" /> {t("league.upcoming")}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {upcomingMatches.map((m, i) => <MatchCard key={m.id || i} match={m} />)}
+                  {upcomingMatches.map((m, i) => <MatchCard key={m.id || i} match={m} onClick={setSelectedMatchId} />)}
                 </div>
               </div>
             )}
@@ -260,7 +262,7 @@ export default function LeagueDetail() {
               <div>
                 <h3 className="text-xl font-bold text-slate-800 mb-3">{t("league.recentResults")}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {recentMatches.map((m, i) => <MatchCard key={m.id || i} match={m} />)}
+                  {recentMatches.map((m, i) => <MatchCard key={m.id || i} match={m} onClick={setSelectedMatchId} />)}
                 </div>
               </div>
             )}
@@ -305,6 +307,11 @@ export default function LeagueDetail() {
           </TabsContent>
         </Tabs>
       )}
+      <MatchDetailModal
+        matchId={selectedMatchId}
+        open={!!selectedMatchId}
+        onClose={() => setSelectedMatchId(null)}
+      />
     </div>
   );
 }

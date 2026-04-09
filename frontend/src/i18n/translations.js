@@ -60,6 +60,10 @@ const translations = {
     match: {
       live: "LIVE", ft: "FT", ht: "HT", today: "Today", tomorrow: "Tomorrow", matchday: "Matchday",
     },
+    detail: {
+      halfTime: "HT", timeline: "Match Timeline", firstHalf: "1st Half", secondHalf: "2nd Half",
+      h2h: "Head to Head", meetings: "meetings", error: "Could not load match details",
+    },
     settings: { language: "Language", title: "Settings" },
     offline: "You're offline - showing cached data",
     loading: "Loading...",
@@ -133,6 +137,10 @@ const translations = {
     match: {
       live: "LIVE", ft: "КМ", ht: "Перерыв", today: "Сегодня", tomorrow: "Завтра", matchday: "Тур",
     },
+    detail: {
+      halfTime: "Перерыв", timeline: "Ход матча", firstHalf: "1-й тайм", secondHalf: "2-й тайм",
+      h2h: "Личные встречи", meetings: "встреч", error: "Не удалось загрузить данные матча",
+    },
     settings: { language: "Язык", title: "Настройки" },
     offline: "Нет сети - показываем сохранённые данные",
     loading: "Загрузка...",
@@ -205,6 +213,10 @@ const translations = {
     },
     match: {
       live: "AO VIVO", ft: "FJ", ht: "Int.", today: "Hoje", tomorrow: "Amanha", matchday: "Jornada",
+    },
+    detail: {
+      halfTime: "Int.", timeline: "Linha do Jogo", firstHalf: "1a Parte", secondHalf: "2a Parte",
+      h2h: "Confronto Direto", meetings: "jogos", error: "Nao foi possivel carregar os detalhes do jogo",
     },
     settings: { language: "Idioma", title: "Definicoes" },
     offline: "Estas offline - a mostrar dados guardados",

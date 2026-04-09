@@ -5,6 +5,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { localizeStory } from "@/i18n/translations";
 import axios from "axios";
 import MatchCard from "@/components/MatchCard";
+import MatchDetailModal from "@/components/MatchDetailModal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Trophy, Zap, Newspaper, ChevronRight, Calendar } from "lucide-react";
 
@@ -19,6 +20,7 @@ export default function HomePage() {
   const [upcomingMatches, setUpcomingMatches] = useState([]);
   const [stories, setStories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedMatchId, setSelectedMatchId] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -122,7 +124,7 @@ export default function HomePage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {displayMatches.slice(0, 6).map((match, i) => (
                   <div key={match.id || i} className="animate-slide-up" style={{ animationDelay: `${0.1 + i * 0.05}s` }}>
-                    <MatchCard match={match} />
+                    <MatchCard match={match} onClick={setSelectedMatchId} />
                   </div>
                 ))}
               </div>
@@ -143,7 +145,8 @@ export default function HomePage() {
                     data-testid={`story-card-${i}`}
                     className="card-tactile p-5 cursor-pointer"
                     onClick={() => {
-                      if (story.competition?.code) navigate(`/league/${story.competition.code}`);
+                      if (story.match_id) setSelectedMatchId(story.match_id);
+                      else if (story.competition?.code) navigate(`/league/${story.competition.code}`);
                     }}
                   >
                     <div className="flex items-center gap-2 mb-3">
@@ -206,6 +209,11 @@ export default function HomePage() {
           </section>
         </>
       )}
+      <MatchDetailModal
+        matchId={selectedMatchId}
+        open={!!selectedMatchId}
+        onClose={() => setSelectedMatchId(null)}
+      />
     </div>
   );
 }
