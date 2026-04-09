@@ -71,10 +71,9 @@ export default function HomePage() {
               key={league.code}
               data-testid={`league-pill-${league.code}`}
               onClick={() => navigate(`/league/${league.code}`)}
-              className="whitespace-nowrap px-5 py-3 rounded-full text-sm font-bold border-2 border-slate-300 bg-white hover:text-white transition-all duration-200 min-h-[48px] flex-shrink-0"
-              onMouseEnter={(e) => { e.target.style.backgroundColor = league.color; e.target.style.borderColor = league.color; e.target.style.color = "#fff"; }}
-              onMouseLeave={(e) => { e.target.style.backgroundColor = "#fff"; e.target.style.borderColor = "#CBD5E1"; e.target.style.color = "#0F172A"; }}
+              className="whitespace-nowrap px-4 py-2.5 rounded-full text-sm font-bold border-2 border-slate-300 bg-white hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 min-h-[48px] flex-shrink-0 flex items-center gap-2"
             >
+              {league.emblem && <img src={league.emblem} alt="" className="w-5 h-5 object-contain" />}
               {league.name}
             </button>
           ))}
@@ -190,11 +189,17 @@ export default function HomePage() {
                   key={league.code}
                   data-testid={`league-card-${league.code}`}
                   onClick={() => navigate(`/league/${league.code}`)}
-                  className="rounded-3xl p-5 text-white font-bold text-left transition-all duration-200 hover:scale-[1.03] active:scale-[0.98] min-h-[100px]"
-                  style={{ backgroundColor: league.color, boxShadow: `0 6px 0 0 ${league.color}88` }}
+                  className="card-tactile p-5 text-left flex flex-col items-center gap-3 min-h-[130px] justify-center"
                 >
-                  <div className="text-lg font-black">{league.name}</div>
-                  <div className="text-sm opacity-80 font-semibold mt-1">{league.country}</div>
+                  {league.emblem ? (
+                    <img src={league.emblem} alt={league.name} className="w-14 h-14 object-contain" />
+                  ) : (
+                    <Trophy size={32} strokeWidth={2} className="text-slate-300" />
+                  )}
+                  <div className="text-center">
+                    <div className="text-sm font-black text-slate-800">{league.name}</div>
+                    <div className="text-xs font-semibold text-slate-400 mt-0.5">{league.country}</div>
+                  </div>
                 </button>
               ))}
             </div>

@@ -33,13 +33,13 @@ FOOTBALL_API_BASE = "https://api.football-data.org/v4"
 COMPETITIONS = "PL,CL,PD,SA,BL1,FL1,PPL"
 
 LEAGUES = {
-    "PL": {"name": "Premier League", "country": "England"},
-    "CL": {"name": "Champions League", "country": "Europe"},
-    "PD": {"name": "La Liga", "country": "Spain"},
-    "SA": {"name": "Serie A", "country": "Italy"},
-    "BL1": {"name": "Bundesliga", "country": "Germany"},
-    "FL1": {"name": "Ligue 1", "country": "France"},
-    "PPL": {"name": "Primeira Liga", "country": "Portugal"},
+    "PL": {"name": "Premier League", "country": "England", "emblem": "https://crests.football-data.org/PL.png"},
+    "CL": {"name": "Champions League", "country": "Europe", "emblem": "https://crests.football-data.org/CL.png"},
+    "PD": {"name": "La Liga", "country": "Spain", "emblem": "https://crests.football-data.org/laliga.png"},
+    "SA": {"name": "Serie A", "country": "Italy", "emblem": "https://crests.football-data.org/c111.png"},
+    "BL1": {"name": "Bundesliga", "country": "Germany", "emblem": "https://crests.football-data.org/BL1.png"},
+    "FL1": {"name": "Ligue 1", "country": "France", "emblem": "https://crests.football-data.org/FL1.png"},
+    "PPL": {"name": "Primeira Liga", "country": "Portugal", "emblem": "https://crests.football-data.org/PPL.png"},
 }
 
 LEAGUE_COLORS = {
@@ -285,7 +285,8 @@ async def get_leagues():
     for code, info in LEAGUES.items():
         leagues.append({
             "code": code, "name": info["name"],
-            "country": info["country"], "color": LEAGUE_COLORS.get(code, "#0EA5E9")
+            "country": info["country"], "color": LEAGUE_COLORS.get(code, "#0EA5E9"),
+            "emblem": info.get("emblem", "")
         })
     return leagues
 

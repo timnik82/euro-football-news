@@ -36,20 +36,21 @@ export function LeaguesList() {
             key={league.code}
             data-testid={`leagues-list-card-${league.code}`}
             onClick={() => navigate(`/league/${league.code}`)}
-            className="rounded-3xl p-6 text-white font-bold text-left transition-all duration-200 hover:scale-[1.03] active:scale-[0.98] min-h-[120px] animate-slide-up"
-            style={{
-              backgroundColor: league.color || LEAGUE_COLORS[league.code],
-              boxShadow: `0 6px 0 0 ${(league.color || LEAGUE_COLORS[league.code])}88`,
-              animationDelay: `${i * 0.05}s`,
-            }}
+            className="card-tactile p-6 text-left flex items-center gap-5 min-h-[100px] animate-slide-up"
+            style={{ animationDelay: `${i * 0.05}s` }}
           >
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xl font-black">{league.name}</div>
-                <div className="text-sm opacity-80 font-semibold mt-1">{league.country}</div>
+            {league.emblem ? (
+              <img src={league.emblem} alt={league.name} className="w-16 h-16 object-contain flex-shrink-0" />
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
+                <ChevronRight size={24} strokeWidth={2.5} className="text-slate-400" />
               </div>
-              <ChevronRight size={28} strokeWidth={2.5} className="opacity-60" />
+            )}
+            <div className="flex-1 min-w-0">
+              <div className="text-lg font-black text-slate-800">{league.name}</div>
+              <div className="text-sm font-semibold text-slate-400 mt-0.5">{league.country}</div>
             </div>
+            <ChevronRight size={22} strokeWidth={2.5} className="text-slate-300 flex-shrink-0" />
           </button>
         ))}
       </div>
@@ -74,6 +75,16 @@ export default function LeagueDetail() {
     PL: "Premier League", CL: "Champions League", PD: "La Liga",
     SA: "Serie A", BL1: "Bundesliga", FL1: "Ligue 1", PPL: "Primeira Liga",
   }[code] || code;
+
+  const leagueEmblem = {
+    PL: "https://crests.football-data.org/PL.png",
+    CL: "https://crests.football-data.org/CL.png",
+    PD: "https://crests.football-data.org/laliga.png",
+    SA: "https://crests.football-data.org/c111.png",
+    BL1: "https://crests.football-data.org/BL1.png",
+    FL1: "https://crests.football-data.org/FL1.png",
+    PPL: "https://crests.football-data.org/PPL.png",
+  }[code] || "";
 
   const color = LEAGUE_COLORS[code] || "#0EA5E9";
 
@@ -149,8 +160,11 @@ export default function LeagueDetail() {
           className="w-12 h-12 rounded-full bg-white border-2 border-slate-300 flex items-center justify-center hover:bg-slate-50 transition-colors">
           <ArrowLeft size={20} strokeWidth={2.5} />
         </button>
+        {leagueEmblem && (
+          <img src={leagueEmblem} alt={leagueName} className="w-12 h-12 object-contain" />
+        )}
         <div className="flex-1">
-          <h1 className="text-3xl sm:text-4xl font-black tracking-tight" style={{ color }}>{leagueName}</h1>
+          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-800">{leagueName}</h1>
         </div>
         <button data-testid="league-favorite-toggle" onClick={toggleFavorite}
           className="w-12 h-12 rounded-full border-2 border-slate-300 flex items-center justify-center transition-all duration-200"
