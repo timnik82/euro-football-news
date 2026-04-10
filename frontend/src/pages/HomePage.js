@@ -6,6 +6,7 @@ import { localizeStory } from "@/i18n/translations";
 import axios from "axios";
 import MatchCard from "@/components/MatchCard";
 import MatchDetailModal from "@/components/MatchDetailModal";
+import SettingsGear from "@/components/SettingsGear";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Trophy, Zap, Newspaper, ChevronRight, Calendar } from "lucide-react";
 
@@ -56,13 +57,16 @@ export default function HomePage() {
   return (
     <div className="max-w-5xl mx-auto px-4 pt-6 pb-4">
       {/* Welcome header */}
-      <div className="mb-6 animate-slide-up">
-        <h1 className="text-4xl sm:text-5xl font-black text-slate-800 tracking-tight">
-          {user ? `${t("home.title").replace("!", "")} ${user.name}!` : t("home.title")}
-        </h1>
-        <p className="text-base sm:text-lg font-semibold text-slate-500 mt-1 capitalize">
-          {formattedDate}
-        </p>
+      <div className="mb-6 animate-slide-up flex items-start justify-between">
+        <div>
+          <h1 className="text-4xl sm:text-5xl font-black text-slate-800 tracking-tight">
+            {user ? `${t("home.title").replace("!", "")} ${user.name}!` : t("home.title")}
+          </h1>
+          <p className="text-base sm:text-lg font-semibold text-slate-500 mt-1 capitalize">
+            {formattedDate}
+          </p>
+        </div>
+        <SettingsGear />
       </div>
 
       {/* League selector pills */}

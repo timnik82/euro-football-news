@@ -18,7 +18,7 @@ export default function SettingsGear() {
       <DropdownMenuTrigger asChild>
         <button
           data-testid="settings-gear-button"
-          className="fixed top-4 right-4 z-50 w-10 h-10 rounded-full bg-white/80 backdrop-blur border-2 border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:border-slate-300 transition-all duration-200 hover:rotate-45"
+          className="w-10 h-10 rounded-full bg-white/80 backdrop-blur border-2 border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:border-slate-300 transition-all duration-200 hover:rotate-45"
         >
           <Settings size={18} strokeWidth={2.5} />
         </button>

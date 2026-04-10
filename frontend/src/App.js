@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { LanguageProvider, useLanguage } from "@/contexts/LanguageContext";
 import Navigation from "@/components/Navigation";
-import SettingsGear from "@/components/SettingsGear";
 import LoginPage from "@/pages/LoginPage";
 import HomePage from "@/pages/HomePage";
 import LeagueDetail, { LeaguesList } from "@/pages/LeaguePage";
@@ -46,7 +45,6 @@ function AppLayout() {
   return (
     <div className={`min-h-screen bg-[#F0F9FF] pb-24 ${!isOnline ? 'pt-10' : ''}`}>
       <OfflineBanner />
-      <SettingsGear />
       <Routes>
         <Route path="/login" element={user ? <Navigate to="/" /> : <LoginPage />} />
         <Route path="/" element={<HomePage />} />
