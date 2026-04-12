@@ -220,7 +220,8 @@ export default function LeagueDetail() {
                           className={`border-b border-slate-100 transition-colors hover:bg-sky-50 ${i % 2 === 0 ? "bg-slate-50/50" : ""}`}>
                           <td className="p-3 font-black text-slate-400">{row.position}</td>
                           <td className="p-3">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 cursor-pointer hover:text-sky-600 transition-colors"
+                              onClick={() => navigate(`/team/${row.team?.id}`)}>
                               {row.team?.crest && <img src={row.team.crest} alt="" className="w-6 h-6 object-contain flex-shrink-0" />}
                               <span className="font-bold text-slate-800 truncate">{row.team?.shortName || row.team?.name}</span>
                             </div>

@@ -40,22 +40,28 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - Localized UI: navigation, page titles, match statuses, date formatting, story headlines
 - Language preference persisted in localStorage
 
+- **Team profile page** — stadium, founded year, club colors, coach, full squad roster grouped by position (GK/DEF/MID/FWD) with nationality and age
+- Clickable team names in league standings → navigates to team profile
+- Translations for team page in all 3 languages
+
 ## Prioritized Backlog
 ### P0 (Done)
-- Match scores, standings, scorers, stories ✅
-- Auth system ✅
-- Favorites system ✅
-- Tablet-optimized UI ✅
+- Match scores, standings, scorers, stories
+- Auth system + Favorites
+- Tablet-optimized UI + PWA + offline
+- Multi-language (EN/RU/PT)
+- Match detail modal with H2H
+- Team profile page with squad
 
 ### P1 (Next)
-- Service worker for offline caching
-- Push notifications for favorite team matches
-- Match detail page with events timeline
-- Team detail page
+- Season progress indicator (Matchday X of 38)
+- Player detail cards
+- "Did you know?" fun facts from team data
+- Penalty stats in top scorers
+- Dark mode toggle
 
 ### P2 (Future)
-- Dark mode toggle
-- Multiple language support
+- Push notifications for favorite team matches
+- Multi-season comparison
 - Share match stories
-- Custom PWA icons
-- Match day reminders
+- Search by team/player

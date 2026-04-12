@@ -7,6 +7,7 @@ import LoginPage from "@/pages/LoginPage";
 import HomePage from "@/pages/HomePage";
 import LeagueDetail, { LeaguesList } from "@/pages/LeaguePage";
 import FavoritesPage from "@/pages/FavoritesPage";
+import TeamPage from "@/pages/TeamPage";
 import { Toaster } from "@/components/ui/sonner";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { WifiOff } from "lucide-react";
@@ -50,6 +51,7 @@ function AppLayout() {
         <Route path="/" element={<HomePage />} />
         <Route path="/leagues" element={<LeaguesList />} />
         <Route path="/league/:code" element={<LeagueDetail />} />
+        <Route path="/team/:id" element={<TeamPage />} />
         <Route path="/favorites" element={user ? <FavoritesPage /> : <Navigate to="/login" />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

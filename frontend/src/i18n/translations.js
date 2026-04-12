@@ -64,6 +64,11 @@ const translations = {
       halfTime: "HT", timeline: "Match Timeline", firstHalf: "1st Half", secondHalf: "2nd Half",
       h2h: "Head to Head", meetings: "meetings", error: "Could not load match details",
     },
+    team: {
+      founded: "Founded", colors: "Colors", coach: "Coach", squad: "Squad", players: "players",
+      yrs: "yrs", notFound: "Team not found",
+      pos: { goalkeeper: "Goalkeepers", defence: "Defenders", midfield: "Midfielders", offence: "Forwards" },
+    },
     settings: { language: "Language", title: "Settings" },
     offline: "You're offline - showing cached data",
     loading: "Loading...",
@@ -141,6 +146,11 @@ const translations = {
       halfTime: "Перерыв", timeline: "Ход матча", firstHalf: "1-й тайм", secondHalf: "2-й тайм",
       h2h: "Личные встречи", meetings: "встреч", error: "Не удалось загрузить данные матча",
     },
+    team: {
+      founded: "Основан", colors: "Цвета", coach: "Тренер", squad: "Состав", players: "игроков",
+      yrs: "лет", notFound: "Команда не найдена",
+      pos: { goalkeeper: "Вратари", defence: "Защитники", midfield: "Полузащитники", offence: "Нападающие" },
+    },
     settings: { language: "Язык", title: "Настройки" },
     offline: "Нет сети - показываем сохранённые данные",
     loading: "Загрузка...",
@@ -217,6 +227,11 @@ const translations = {
     detail: {
       halfTime: "Int.", timeline: "Linha do Jogo", firstHalf: "1a Parte", secondHalf: "2a Parte",
       h2h: "Confronto Direto", meetings: "jogos", error: "Nao foi possivel carregar os detalhes do jogo",
+    },
+    team: {
+      founded: "Fundado", colors: "Cores", coach: "Treinador", squad: "Plantel", players: "jogadores",
+      yrs: "anos", notFound: "Equipa nao encontrada",
+      pos: { goalkeeper: "Guarda-redes", defence: "Defesas", midfield: "Medios", offence: "Avancados" },
     },
     settings: { language: "Idioma", title: "Definicoes" },
     offline: "Estas offline - a mostrar dados guardados",
