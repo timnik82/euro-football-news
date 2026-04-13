@@ -339,8 +339,6 @@ async def get_team(team_id: int):
         ],
     }
 
-@api_router.get("/matches/{match_id}")
-
 @api_router.get("/players/{player_id}")
 async def get_player(player_id: int):
     data = await fetch_football_data(f"/persons/{player_id}", cache_minutes=60)
@@ -367,15 +365,45 @@ async def get_player(player_id: int):
         } if contract.get("start") else None,
     }
 
+@api_router.get("/matches/today")
+async def get_today_matches():
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    data = await fetch_football_data("/matches", cache_minutes=3, params={
+        "dateFrom": today, "dateTo": today, "competitions": COMPETITIONS
+    })
+    return data.get("matches", [])
+
+@api_router.get("/matches/upcoming")
+async def get_upcoming_matches(days: int = 7):
+    today = datetime.now(timezone.utc)
+    date_from = today.strftime("%Y-%m-%d")
+    date_to = (today + timedelta(days=min(days, 14))).strftime("%Y-%m-%d")
+    data = await fetch_football_data("/matches", cache_minutes=10, params={
+        "dateFrom": date_from, "dateTo": date_to, "competitions": COMPETITIONS
+    })
+    matches = [m for m in data.get("matches", []) if m.get("status") in ("SCHEDULED", "TIMED")]
+    return matches[:30]
+
+@api_router.get("/matches/recent")
+async def get_recent_matches(days: int = 7):
+    today = datetime.now(timezone.utc)
+    date_from = (today - timedelta(days=min(days, 14))).strftime("%Y-%m-%d")
+    date_to = today.strftime("%Y-%m-%d")
+    data = await fetch_football_data("/matches", cache_minutes=5, params={
+        "dateFrom": date_from, "dateTo": date_to, "competitions": COMPETITIONS
+    })
+    matches = [m for m in data.get("matches", []) if m.get("status") == "FINISHED"]
+    matches.sort(key=lambda x: x.get("utcDate", ""), reverse=True)
+    return matches[:30]
+
+@api_router.get("/matches/{match_id}")
 async def get_match_detail(match_id: int):
     match_data = await fetch_football_data(f"/matches/{match_id}", cache_minutes=5)
-    # Fetch head2head
     h2h = None
     try:
         h2h = await fetch_football_data(f"/matches/{match_id}/head2head", cache_minutes=30, params={"limit": 5})
     except Exception:
         pass
-    # Clean response
     result = {
         "id": match_data.get("id"),
         "competition": match_data.get("competition"),
@@ -411,37 +439,6 @@ async def get_match_detail(match_id: int):
         }
     return result
 
-
-@api_router.get("/matches/today")
-async def get_today_matches():
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    data = await fetch_football_data("/matches", cache_minutes=3, params={
-        "dateFrom": today, "dateTo": today, "competitions": COMPETITIONS
-    })
-    return data.get("matches", [])
-
-@api_router.get("/matches/upcoming")
-async def get_upcoming_matches(days: int = 7):
-    today = datetime.now(timezone.utc)
-    date_from = today.strftime("%Y-%m-%d")
-    date_to = (today + timedelta(days=min(days, 14))).strftime("%Y-%m-%d")
-    data = await fetch_football_data("/matches", cache_minutes=10, params={
-        "dateFrom": date_from, "dateTo": date_to, "competitions": COMPETITIONS
-    })
-    matches = [m for m in data.get("matches", []) if m.get("status") in ("SCHEDULED", "TIMED")]
-    return matches[:30]
-
-@api_router.get("/matches/recent")
-async def get_recent_matches(days: int = 7):
-    today = datetime.now(timezone.utc)
-    date_from = (today - timedelta(days=min(days, 14))).strftime("%Y-%m-%d")
-    date_to = today.strftime("%Y-%m-%d")
-    data = await fetch_football_data("/matches", cache_minutes=5, params={
-        "dateFrom": date_from, "dateTo": date_to, "competitions": COMPETITIONS
-    })
-    matches = [m for m in data.get("matches", []) if m.get("status") == "FINISHED"]
-    matches.sort(key=lambda x: x.get("utcDate", ""), reverse=True)
-    return matches[:30]
 
 @api_router.get("/leagues/{code}/matches")
 async def get_league_matches(code: str, status: Optional[str] = None, limit: int = 20):
