@@ -340,6 +340,33 @@ async def get_team(team_id: int):
     }
 
 @api_router.get("/matches/{match_id}")
+
+@api_router.get("/players/{player_id}")
+async def get_player(player_id: int):
+    data = await fetch_football_data(f"/persons/{player_id}", cache_minutes=60)
+    ct = data.get("currentTeam") or {}
+    contract = ct.get("contract") or {}
+    return {
+        "id": data.get("id"),
+        "name": data.get("name"),
+        "firstName": data.get("firstName"),
+        "lastName": data.get("lastName"),
+        "dateOfBirth": data.get("dateOfBirth"),
+        "nationality": data.get("nationality"),
+        "position": data.get("position"),
+        "section": data.get("section"),
+        "shirtNumber": data.get("shirtNumber"),
+        "currentTeam": {
+            "id": ct.get("id"),
+            "name": ct.get("name"),
+            "crest": ct.get("crest"),
+        } if ct.get("name") else None,
+        "contract": {
+            "start": contract.get("start"),
+            "until": contract.get("until"),
+        } if contract.get("start") else None,
+    }
+
 async def get_match_detail(match_id: int):
     match_data = await fetch_football_data(f"/matches/{match_id}", cache_minutes=5)
     # Fetch head2head

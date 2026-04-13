@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { ArrowLeft, Heart, Star, ChevronRight } from "lucide-react";
+import PlayerDetailModal from "@/components/PlayerDetailModal";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -72,6 +73,7 @@ export default function LeagueDetail() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [favorites, setFavorites] = useState([]);
   const [selectedMatchId, setSelectedMatchId] = useState(null);
+  const [selectedPlayerId, setSelectedPlayerId] = useState(null);
 
   const leagueName = {
     PL: "Premier League", CL: "Champions League", PD: "La Liga",
@@ -285,7 +287,8 @@ export default function LeagueDetail() {
                 <div>
                   {scorers.map((scorer, i) => (
                     <div key={scorer.player?.id || i}
-                      className={`flex items-center gap-3 p-4 border-b border-slate-100 ${i % 2 === 0 ? "bg-slate-50/50" : ""}`}>
+                      onClick={() => scorer.player?.id && setSelectedPlayerId(scorer.player.id)}
+                      className={`flex items-center gap-3 p-4 border-b border-slate-100 cursor-pointer hover:bg-sky-50 transition-colors ${i % 2 === 0 ? "bg-slate-50/50" : ""}`}>
                       <span className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-sm ${
                         i === 0 ? "bg-yellow-400 text-white" : i === 1 ? "bg-slate-300 text-white" : i === 2 ? "bg-amber-600 text-white" : "bg-slate-100 text-slate-500"
                       }`}>{i + 1}</span>
@@ -312,6 +315,11 @@ export default function LeagueDetail() {
         matchId={selectedMatchId}
         open={!!selectedMatchId}
         onClose={() => setSelectedMatchId(null)}
+      />
+      <PlayerDetailModal
+        playerId={selectedPlayerId}
+        open={!!selectedPlayerId}
+        onClose={() => setSelectedPlayerId(null)}
       />
     </div>
   );

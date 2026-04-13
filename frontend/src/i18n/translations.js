@@ -69,6 +69,10 @@ const translations = {
       yrs: "yrs", notFound: "Team not found",
       pos: { goalkeeper: "Goalkeepers", defence: "Defenders", midfield: "Midfielders", offence: "Forwards" },
     },
+    player: {
+      club: "Club", nationality: "Nationality", age: "Age", born: "Born",
+      number: "Number", contract: "Contract", notFound: "Player not found",
+    },
     settings: { language: "Language", title: "Settings" },
     offline: "You're offline - showing cached data",
     loading: "Loading...",
@@ -232,6 +236,10 @@ const translations = {
       founded: "Fundado", colors: "Cores", coach: "Treinador", squad: "Plantel", players: "jogadores",
       yrs: "anos", notFound: "Equipa nao encontrada",
       pos: { goalkeeper: "Guarda-redes", defence: "Defesas", midfield: "Medios", offence: "Avancados" },
+    },
+    player: {
+      club: "Clube", nationality: "Nacionalidade", age: "Idade", born: "Nascimento",
+      number: "Numero", contract: "Contrato", notFound: "Jogador nao encontrado",
     },
     settings: { language: "Idioma", title: "Definicoes" },
     offline: "Estas offline - a mostrar dados guardados",

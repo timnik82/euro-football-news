@@ -6,6 +6,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { ArrowLeft, Heart, MapPin, Calendar, Palette, Globe, User, Shield, Users } from "lucide-react";
+import PlayerDetailModal from "@/components/PlayerDetailModal";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -25,6 +26,7 @@ export default function TeamPage() {
   const [team, setTeam] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [selectedPlayerId, setSelectedPlayerId] = useState(null);
 
   useEffect(() => {
     fetchTeam();
@@ -178,7 +180,8 @@ export default function TeamPage() {
                   <div
                     key={p.id || i}
                     data-testid={`player-${p.id}`}
-                    className={`flex items-center gap-3 px-4 py-3 ${i % 2 === 0 ? "bg-slate-50/50" : ""} ${i < players.length - 1 ? "border-b border-slate-100" : ""}`}
+                    onClick={() => p.id && setSelectedPlayerId(p.id)}
+                    className={`flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-sky-50 transition-colors ${i % 2 === 0 ? "bg-slate-50/50" : ""} ${i < players.length - 1 ? "border-b border-slate-100" : ""}`}
                   >
                     <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0">
                       <span className="text-xs font-black text-slate-500">{i + 1}</span>
@@ -197,6 +200,11 @@ export default function TeamPage() {
           );
         })}
       </div>
+      <PlayerDetailModal
+        playerId={selectedPlayerId}
+        open={!!selectedPlayerId}
+        onClose={() => setSelectedPlayerId(null)}
+      />
     </div>
   );
 }
