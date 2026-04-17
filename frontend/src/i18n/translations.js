@@ -63,6 +63,11 @@ const translations = {
     detail: {
       halfTime: "HT", timeline: "Match Timeline", firstHalf: "1st Half", secondHalf: "2nd Half",
       h2h: "Head to Head", meetings: "meetings", error: "Could not load match details",
+      extraTime: "After Extra Time", penalties: "After Penalties",
+      totalGoals: "goals in {n} meetings", winner: "Winner",
+    },
+    season: {
+      matchday: "Matchday", of: "of", progress: "Season Progress",
     },
     team: {
       founded: "Founded", colors: "Colors", coach: "Coach", squad: "Squad", players: "players",
@@ -149,6 +154,11 @@ const translations = {
     detail: {
       halfTime: "Перерыв", timeline: "Ход матча", firstHalf: "1-й тайм", secondHalf: "2-й тайм",
       h2h: "Личные встречи", meetings: "встреч", error: "Не удалось загрузить данные матча",
+      extraTime: "После доп. времени", penalties: "По пенальти",
+      totalGoals: "голов в {n} встречах", winner: "Победитель",
+    },
+    season: {
+      matchday: "Тур", of: "из", progress: "Прогресс сезона",
     },
     team: {
       founded: "Основан", colors: "Цвета", coach: "Тренер", squad: "Состав", players: "игроков",
@@ -231,6 +241,11 @@ const translations = {
     detail: {
       halfTime: "Int.", timeline: "Linha do Jogo", firstHalf: "1a Parte", secondHalf: "2a Parte",
       h2h: "Confronto Direto", meetings: "jogos", error: "Nao foi possivel carregar os detalhes do jogo",
+      extraTime: "Apos prolongamento", penalties: "Apos penaltis",
+      totalGoals: "golos em {n} jogos", winner: "Vencedor",
+    },
+    season: {
+      matchday: "Jornada", of: "de", progress: "Progresso da Epoca",
     },
     team: {
       founded: "Fundado", colors: "Cores", coach: "Treinador", squad: "Plantel", players: "jogadores",

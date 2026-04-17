@@ -8,7 +8,7 @@ import MatchDetailModal from "@/components/MatchDetailModal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { ArrowLeft, Heart, Star, ChevronRight } from "lucide-react";
+import { ArrowLeft, Heart, Star, ChevronRight, BarChart3, Trophy } from "lucide-react";
 import PlayerDetailModal from "@/components/PlayerDetailModal";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -69,6 +69,7 @@ export default function LeagueDetail() {
   const [recentMatches, setRecentMatches] = useState([]);
   const [upcomingMatches, setUpcomingMatches] = useState([]);
   const [scorers, setScorers] = useState([]);
+  const [season, setSeason] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
   const [favorites, setFavorites] = useState([]);
@@ -99,17 +100,19 @@ export default function LeagueDetail() {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const [standingsRes, recentRes, upcomingRes, scorersRes, favsRes] = await Promise.allSettled([
+      const [standingsRes, recentRes, upcomingRes, scorersRes, seasonRes, favsRes] = await Promise.allSettled([
         axios.get(`${API}/leagues/${code}/standings`),
         axios.get(`${API}/leagues/${code}/matches?status=FINISHED&limit=10`),
         axios.get(`${API}/leagues/${code}/matches?status=SCHEDULED&limit=10`),
         axios.get(`${API}/leagues/${code}/scorers`),
+        axios.get(`${API}/leagues/${code}/season`),
         user ? axios.get(`${API}/favorites`, { withCredentials: true }) : Promise.resolve({ data: [] }),
       ]);
       if (standingsRes.status === "fulfilled") setStandings(standingsRes.value.data);
       if (recentRes.status === "fulfilled") setRecentMatches(recentRes.value.data);
       if (upcomingRes.status === "fulfilled") setUpcomingMatches(upcomingRes.value.data);
       if (scorersRes.status === "fulfilled") setScorers(scorersRes.value.data);
+      if (seasonRes.status === "fulfilled") setSeason(seasonRes.value.data);
       if (favsRes.status === "fulfilled") {
         const favs = favsRes.value.data;
         setFavorites(favs);
@@ -176,6 +179,38 @@ export default function LeagueDetail() {
           <Heart size={22} strokeWidth={2.5} className={isFavorite ? "text-yellow-500 fill-yellow-500" : "text-slate-400"} />
         </button>
       </div>
+
+      {/* Season Progress Bar */}
+      {!loading && season?.currentMatchday && season?.totalMatchdays && (
+        <div className="card-tactile px-5 py-4 mb-5 animate-slide-up" data-testid="season-progress-bar">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <BarChart3 size={16} strokeWidth={2.5} className="text-sky-500" />
+              <span className="text-sm font-bold text-slate-700">
+                {t("season.matchday")} {season.currentMatchday} / {season.totalMatchdays}
+              </span>
+            </div>
+            <span className="text-xs font-semibold text-slate-400">
+              {Math.round((season.currentMatchday / season.totalMatchdays) * 100)}%
+            </span>
+          </div>
+          <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+            <div
+              className="h-3 rounded-full transition-all duration-700"
+              style={{
+                width: `${(season.currentMatchday / season.totalMatchdays) * 100}%`,
+                background: `linear-gradient(90deg, ${color}, ${color}cc)`,
+              }}
+            />
+          </div>
+          {season.winner && (
+            <div className="flex items-center gap-2 mt-2">
+              <Trophy size={13} strokeWidth={2.5} className="text-yellow-500" />
+              <span className="text-xs font-bold text-slate-600">{season.winner.name}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {loading ? (
         <div className="space-y-4">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-20 rounded-3xl" />)}</div>

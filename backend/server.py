@@ -416,11 +416,13 @@ async def get_match_detail(match_id: int):
         "stage": match_data.get("stage"),
         "venue": match_data.get("venue"),
         "referees": match_data.get("referees", []),
+        "season": match_data.get("season"),
     }
     if h2h:
         agg = h2h.get("aggregates", {})
         result["h2h"] = {
             "totalMatches": agg.get("numberOfMatches", 0),
+            "totalGoals": agg.get("totalGoals", 0),
             "homeWins": agg.get("homeTeam", {}).get("wins", 0),
             "awayWins": agg.get("awayTeam", {}).get("wins", 0),
             "draws": agg.get("draws", 0),
@@ -438,6 +440,23 @@ async def get_match_detail(match_id: int):
             ],
         }
     return result
+
+
+@api_router.get("/leagues/{code}/season")
+async def get_league_season(code: str):
+    if code not in LEAGUES:
+        raise HTTPException(404, "League not found")
+    data = await fetch_football_data(f"/competitions/{code}", cache_minutes=30)
+    cs = data.get("currentSeason") or {}
+    total_matchdays = 38 if data.get("type") == "LEAGUE" else None
+    return {
+        "currentMatchday": cs.get("currentMatchday"),
+        "totalMatchdays": total_matchdays,
+        "startDate": cs.get("startDate"),
+        "endDate": cs.get("endDate"),
+        "winner": cs.get("winner"),
+        "type": data.get("type"),
+    }
 
 
 @api_router.get("/leagues/{code}/matches")
