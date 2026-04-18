@@ -64,6 +64,14 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - H2H total goals display ("17 goals in 5 meetings")
 - H2H win/draw/loss stats bar
 
+### Phase 5 — Global Search (done — Apr 2026)
+- Search icon in bottom navigation bar
+- Full-screen search overlay (SearchModal.js)
+- Search teams by name → navigates to team profile page
+- Search players (from scorers cache) → shows goals count, opens PlayerDetailModal
+- Debounced input (350ms), results panel with TEAMS / PLAYERS sections
+- Backend `/api/search?q={query}` searches across all 7 leagues from cache
+
 ## Key Technical Details
 - Frontend: React, TailwindCSS, Shadcn UI, PWA Service Worker
 - Backend: FastAPI, PyJWT (cookie auth), HTTPX
@@ -92,7 +100,6 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 ### P2 — Future
 - "Did you know?" fun facts (stadium, founded year)
 - Penalty stats in top scorers list
-- Global search for teams and players
 
 ## Known Issues / Notes
 - Route ordering in server.py is critical: `/matches/today` MUST precede `/matches/{match_id}`

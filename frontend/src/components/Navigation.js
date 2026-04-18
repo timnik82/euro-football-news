@@ -1,8 +1,10 @@
 import { useLocation, useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Home, Trophy, Heart, User, LogIn } from "lucide-react";
+import { Home, Trophy, Heart, User, LogIn, Search } from "lucide-react";
 import { toast } from "sonner";
+import SearchModal from "@/components/SearchModal";
 
 const navItems = [
   { path: "/", icon: Home, tKey: "nav.home" },
@@ -15,6 +17,7 @@ export default function Navigation() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { t } = useLanguage();
+  const [searchOpen, setSearchOpen] = useState(false);
 
   if (location.pathname === "/login") return null;
 
@@ -34,42 +37,54 @@ export default function Navigation() {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-slate-200 px-4 py-2 z-50" data-testid="bottom-navigation">
-      <div className="flex items-center justify-around max-w-lg mx-auto">
-        {navItems.map((item) => {
-          const active = isActive(item.path);
-          return (
-            <button
-              key={item.path}
-              data-testid={`nav-${item.tKey.split(".")[1]}`}
-              onClick={() => {
-                if (item.path === "/favorites" && !user) {
-                  toast.info(t("nav.login") + "!");
-                  navigate("/login");
-                  return;
-                }
-                navigate(item.path);
-              }}
-              className={`flex flex-col items-center gap-0.5 px-4 py-2 rounded-2xl transition-all duration-200 min-w-[64px] min-h-[48px] ${
-                active ? "bg-sky-100 text-sky-500" : "text-slate-400 hover:text-slate-600"
-              }`}
-            >
-              <item.icon size={22} strokeWidth={active ? 3 : 2.5} />
-              <span className="text-[11px] font-bold">{t(item.tKey)}</span>
-            </button>
-          );
-        })}
-        <button
-          data-testid="nav-profile"
-          onClick={handleProfileClick}
-          className="flex flex-col items-center gap-0.5 px-4 py-2 rounded-2xl transition-all duration-200 min-w-[64px] min-h-[48px] text-slate-400 hover:text-slate-600"
-        >
-          {user ? <User size={22} strokeWidth={2.5} /> : <LogIn size={22} strokeWidth={2.5} />}
-          <span className="text-[11px] font-bold">
-            {user ? user.name?.split(" ")[0] || t("nav.logout") : t("nav.login")}
-          </span>
-        </button>
-      </div>
-    </nav>
+    <>
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-slate-200 px-4 py-2 z-50" data-testid="bottom-navigation">
+        <div className="flex items-center justify-around max-w-lg mx-auto">
+          {navItems.map((item) => {
+            const active = isActive(item.path);
+            return (
+              <button
+                key={item.path}
+                data-testid={`nav-${item.tKey.split(".")[1]}`}
+                onClick={() => {
+                  if (item.path === "/favorites" && !user) {
+                    toast.info(t("nav.login") + "!");
+                    navigate("/login");
+                    return;
+                  }
+                  navigate(item.path);
+                }}
+                className={`flex flex-col items-center gap-0.5 px-4 py-2 rounded-2xl transition-all duration-200 min-w-[56px] min-h-[48px] ${
+                  active ? "bg-sky-100 text-sky-500" : "text-slate-400 hover:text-slate-600"
+                }`}
+              >
+                <item.icon size={22} strokeWidth={active ? 3 : 2.5} />
+                <span className="text-[11px] font-bold">{t(item.tKey)}</span>
+              </button>
+            );
+          })}
+          {/* Search button */}
+          <button
+            data-testid="nav-search"
+            onClick={() => setSearchOpen(true)}
+            className="flex flex-col items-center gap-0.5 px-4 py-2 rounded-2xl transition-all duration-200 min-w-[56px] min-h-[48px] text-slate-400 hover:text-sky-500"
+          >
+            <Search size={22} strokeWidth={2.5} />
+            <span className="text-[11px] font-bold">Search</span>
+          </button>
+          <button
+            data-testid="nav-profile"
+            onClick={handleProfileClick}
+            className="flex flex-col items-center gap-0.5 px-4 py-2 rounded-2xl transition-all duration-200 min-w-[56px] min-h-[48px] text-slate-400 hover:text-slate-600"
+          >
+            {user ? <User size={22} strokeWidth={2.5} /> : <LogIn size={22} strokeWidth={2.5} />}
+            <span className="text-[11px] font-bold">
+              {user ? user.name?.split(" ")[0] || t("nav.logout") : t("nav.login")}
+            </span>
+          </button>
+        </div>
+      </nav>
+      <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
+    </>
   );
 }
