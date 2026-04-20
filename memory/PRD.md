@@ -72,6 +72,11 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - Debounced input (350ms), results panel with TEAMS / PLAYERS sections
 - Backend `/api/search?q={query}` searches across all 7 leagues from cache
 
+### Phase 6 — App Icon Refresh (done — Apr 2026)
+- Replaced favicon and PWA app icons with the user-provided `gemini-svg.svg`
+- Regenerated `favicon.ico`, `logo192.png`, `logo512.png`, and `apple-touch-icon.png`
+- Verified that the preview serves the updated icon assets correctly
+
 ## Key Technical Details
 - Frontend: React, TailwindCSS, Shadcn UI, PWA Service Worker
 - Backend: FastAPI, PyJWT (cookie auth), HTTPX
