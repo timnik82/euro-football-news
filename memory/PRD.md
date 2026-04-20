@@ -77,6 +77,11 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - Regenerated `favicon.ico`, `logo192.png`, `logo512.png`, and `apple-touch-icon.png`
 - Verified that the preview serves the updated icon assets correctly
 
+### Phase 7 — iPad Safari Splash Polish (done — Apr 2026)
+- Added iPad-specific Apple touch icon (`167x167`) for installed PWA on Safari
+- Created custom startup splash images for iPad 10.9 in portrait and landscape
+- Updated `public/index.html` with Apple startup image links for iPad Safari installation flow
+
 ## Key Technical Details
 - Frontend: React, TailwindCSS, Shadcn UI, PWA Service Worker
 - Backend: FastAPI, PyJWT (cookie auth), HTTPX
