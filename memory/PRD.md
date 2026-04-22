@@ -82,6 +82,11 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - Created custom startup splash images for iPad 10.9 in portrait and landscape
 - Updated `public/index.html` with Apple startup image links for iPad Safari installation flow
 
+### Phase 8 — In-App Brand Header Polish (done — Apr 2026)
+- Added a shared `BrandHeading` component using the custom app icon and `Goal Kick` wordmark
+- Placed brand heading on homepage, leagues, league detail, team page, favorites, and login screen
+- Verified the branded header renders correctly across the main navigation flow
+
 ## Key Technical Details
 - Frontend: React, TailwindCSS, Shadcn UI, PWA Service Worker
 - Backend: FastAPI, PyJWT (cookie auth), HTTPX

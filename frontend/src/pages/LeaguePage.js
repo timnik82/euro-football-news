@@ -4,6 +4,7 @@ import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import MatchCard from "@/components/MatchCard";
+import { BrandHeading } from "@/components/BrandHeading";
 import MatchDetailModal from "@/components/MatchDetailModal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -29,9 +30,12 @@ export function LeaguesList() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 pt-6">
-      <h1 className="text-4xl sm:text-5xl font-black text-slate-800 tracking-tight mb-6 animate-slide-up">
-        {t("nav.leagues")}
-      </h1>
+      <div className="mb-6 animate-slide-up space-y-3">
+        <BrandHeading label="Goal Kick" size="sm" testId="leagues-page-brand-heading" />
+        <h1 className="text-4xl sm:text-5xl font-black text-slate-800 tracking-tight">
+          {t("nav.leagues")}
+        </h1>
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
         {leagues.map((league, i) => (
           <button
@@ -162,6 +166,9 @@ export default function LeagueDetail() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 pt-6">
+      <div className="mb-4 animate-slide-up">
+        <BrandHeading label="Goal Kick" size="sm" testId="league-detail-brand-heading" />
+      </div>
       <div className="flex items-center gap-3 mb-6 animate-slide-up">
         <button data-testid="league-back-button" onClick={() => navigate(-1)}
           className="w-12 h-12 rounded-full bg-white border-2 border-slate-300 flex items-center justify-center hover:bg-slate-50 transition-colors">

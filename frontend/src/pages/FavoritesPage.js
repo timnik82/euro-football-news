@@ -5,6 +5,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import axios from "axios";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { BrandHeading } from "@/components/BrandHeading";
 import { Heart, Trash2, Trophy, Users } from "lucide-react";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -40,9 +41,12 @@ export default function FavoritesPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 pt-6">
-      <div className="flex items-center gap-3 mb-6 animate-slide-up">
-        <Heart size={28} strokeWidth={2.5} className="text-red-400 fill-red-400" />
-        <h1 className="text-4xl sm:text-5xl font-black text-slate-800 tracking-tight">{t("favorites.title")}</h1>
+      <div className="mb-6 animate-slide-up space-y-3">
+        <BrandHeading label="Goal Kick" size="sm" testId="favorites-page-brand-heading" />
+        <div className="flex items-center gap-3">
+          <Heart size={28} strokeWidth={2.5} className="text-red-400 fill-red-400" />
+          <h1 className="text-4xl sm:text-5xl font-black text-slate-800 tracking-tight">{t("favorites.title")}</h1>
+        </div>
       </div>
 
       {loading ? (

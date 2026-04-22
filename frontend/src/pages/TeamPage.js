@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { BrandHeading } from "@/components/BrandHeading";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { ArrowLeft, Heart, MapPin, Calendar, Palette, Globe, User, Shield, Users } from "lucide-react";
@@ -85,6 +86,9 @@ export default function TeamPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 pt-6 pb-8">
+      <div className="mb-4 animate-slide-up">
+        <BrandHeading label="Goal Kick" size="sm" testId="team-page-brand-heading" />
+      </div>
       {/* Header */}
       <div className="flex items-center gap-3 mb-6 animate-slide-up">
         <button data-testid="team-back-button" onClick={() => navigate(-1)}

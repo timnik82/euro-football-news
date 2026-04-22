@@ -2,10 +2,11 @@ import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useNavigate } from "react-router-dom";
+import { BrandHeading } from "@/components/BrandHeading";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LogIn, UserPlus, Trophy } from "lucide-react";
+import { LogIn, UserPlus } from "lucide-react";
 
 export default function LoginPage() {
   const [isRegister, setIsRegister] = useState(false);
@@ -44,8 +45,8 @@ export default function LoginPage() {
       <div className="relative z-10 w-full max-w-md animate-bounce-in">
         <div className="card-tactile p-8">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-sky-100 mb-4">
-              <Trophy size={32} strokeWidth={2.5} className="text-sky-500" />
+            <div className="flex justify-center mb-4">
+              <BrandHeading label="Goal Kick" size="md" testId="login-brand-heading" />
             </div>
             <h1 className="text-3xl font-black text-slate-800 tracking-tight">
               {isRegister ? t("login.joinClub") : t("login.welcomeBack")}
