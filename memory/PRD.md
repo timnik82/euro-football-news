@@ -87,6 +87,11 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - Placed brand heading on homepage, leagues, league detail, team page, favorites, and login screen
 - Verified the branded header renders correctly across the main navigation flow
 
+### Phase 9 — Homepage Content Simplification (done — Apr 2026)
+- Reordered homepage sections so match stories appear before upcoming matches
+- Removed league pills and league explore cards from the homepage to reduce duplication with the Leagues tab
+- Verified homepage now focuses on stories first, then the nearest matches
+
 ## Key Technical Details
 - Frontend: React, TailwindCSS, Shadcn UI, PWA Service Worker
 - Backend: FastAPI, PyJWT (cookie auth), HTTPX
