@@ -97,6 +97,11 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - Added lighter, more natural story variants for English, Russian, and Portuguese
 - Kept a safe fallback so homepage stories still render cleanly when detailed match context is limited
 
+### Phase 11 — Homepage Story Card Cleanup (done — Apr 2026)
+- Removed the lower descriptive paragraph from homepage match-story cards
+- Kept the API-driven essentials visible: competition, teams, crests, and score
+- Verified that only the extra description disappeared while the rest of the card stayed intact
+
 ## Key Technical Details
 - Frontend: React, TailwindCSS, Shadcn UI, PWA Service Worker
 - Backend: FastAPI, PyJWT (cookie auth), HTTPX

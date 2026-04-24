@@ -119,7 +119,6 @@ export default function HomePage() {
                         {story.away_team?.crest && <img src={story.away_team.crest} alt="" className="w-6 h-6 object-contain" />}
                       </div>
                     </div>
-                    <p className="text-sm text-slate-500 font-medium">{story.summary}</p>
                   </div>
                 ))}
               </div>
