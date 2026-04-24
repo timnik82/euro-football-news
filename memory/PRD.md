@@ -92,6 +92,11 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - Removed league pills and league explore cards from the homepage to reduce duplication with the Leagues tab
 - Verified homepage now focuses on stories first, then the nearest matches
 
+### Phase 10 — Smarter Match Story Localization (done — Apr 2026)
+- Replaced repetitive homepage match-story phrasing with rule-based summaries driven by scoreline patterns
+- Added lighter, more natural story variants for English, Russian, and Portuguese
+- Kept a safe fallback so homepage stories still render cleanly when detailed match context is limited
+
 ## Key Technical Details
 - Frontend: React, TailwindCSS, Shadcn UI, PWA Service Worker
 - Backend: FastAPI, PyJWT (cookie auth), HTTPX
