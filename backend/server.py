@@ -222,56 +222,25 @@ async def fetch_football_data(endpoint, cache_minutes=5, params=None):
     )
     return data
 
-def generate_match_story(match):
+def build_story_payload(match):
     home = match.get("homeTeam", {})
     away = match.get("awayTeam", {})
-    home_name = home.get("shortName") or home.get("name", "Home")
-    away_name = away.get("shortName") or away.get("name", "Away")
     ft = match.get("score", {}).get("fullTime", {})
     home_score = ft.get("home")
     away_score = ft.get("away")
     if home_score is None or away_score is None:
         return None
-
-    total = home_score + away_score
-    diff = abs(home_score - away_score)
-
-    if home_score > away_score:
-        if diff >= 3:
-            headline = f"{home_name} crushes {away_name} in dominant display!"
-        elif diff == 1:
-            headline = f"{home_name} edges past {away_name} in tight game!"
-        else:
-            headline = f"{home_name} wins comfortably against {away_name}!"
-    elif away_score > home_score:
-        if diff >= 3:
-            headline = f"{away_name} demolishes {home_name} away from home!"
-        elif diff == 1:
-            headline = f"{away_name} sneaks a win at {home_name}!"
-        else:
-            headline = f"{away_name} triumphs at {home_name}!"
-    else:
-        if total == 0:
-            headline = f"{home_name} and {away_name} play out goalless draw"
-        else:
-            headline = f"Exciting {home_score}-{away_score} draw between {home_name} and {away_name}!"
-
-    if total >= 5:
-        flavor = "A thrilling goal-fest that had fans on the edge of their seats!"
-    elif total >= 3:
-        flavor = "An entertaining match with plenty of action!"
-    elif total == 0:
-        flavor = "A defensive masterclass from both sides."
-    else:
-        flavor = "A competitive battle on the pitch!"
-
     comp = match.get("competition", {})
     return {
         "match_id": match.get("id"),
-        "headline": headline,
-        "summary": f"The final score was {home_score}-{away_score}. {flavor}",
-        "home_team": {"name": home_name, "crest": home.get("crest", "")},
-        "away_team": {"name": away_name, "crest": away.get("crest", "")},
+        "home_team": {
+            "name": home.get("shortName") or home.get("name", "Home"),
+            "crest": home.get("crest", ""),
+        },
+        "away_team": {
+            "name": away.get("shortName") or away.get("name", "Away"),
+            "crest": away.get("crest", ""),
+        },
         "score": {"home": home_score, "away": away_score},
         "competition": {"name": comp.get("name", ""), "code": comp.get("code", ""), "emblem": comp.get("emblem", "")},
         "date": match.get("utcDate", ""),
@@ -579,7 +548,7 @@ async def get_stories():
         return []
     stories = []
     for match in data.get("matches", []):
-        story = generate_match_story(match)
+        story = build_story_payload(match)
         if story:
             stories.append(story)
     stories.sort(key=lambda x: x.get("date", ""), reverse=True)

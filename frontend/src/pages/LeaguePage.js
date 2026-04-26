@@ -11,13 +11,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { ArrowLeft, Heart, Star, ChevronRight, BarChart3, Trophy } from "lucide-react";
 import PlayerDetailModal from "@/components/PlayerDetailModal";
+import { getLeague } from "@/constants/leagues";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
-
-const LEAGUE_COLORS = {
-  PL: "#7C3AED", CL: "#1E3A5F", PD: "#F97316",
-  SA: "#059669", BL1: "#DC2626", FL1: "#1D4ED8", PPL: "#15803D",
-};
 
 export function LeaguesList() {
   const [leagues, setLeagues] = useState([]);
@@ -80,22 +76,10 @@ export default function LeagueDetail() {
   const [selectedMatchId, setSelectedMatchId] = useState(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState(null);
 
-  const leagueName = {
-    PL: "Premier League", CL: "Champions League", PD: "La Liga",
-    SA: "Serie A", BL1: "Bundesliga", FL1: "Ligue 1", PPL: "Primeira Liga",
-  }[code] || code;
-
-  const leagueEmblem = {
-    PL: "https://crests.football-data.org/PL.png",
-    CL: "https://crests.football-data.org/CL.png",
-    PD: "https://crests.football-data.org/laliga.png",
-    SA: "https://crests.football-data.org/c111.png",
-    BL1: "https://crests.football-data.org/BL1.png",
-    FL1: "https://crests.football-data.org/FL1.png",
-    PPL: "https://crests.football-data.org/PPL.png",
-  }[code] || "";
-
-  const color = LEAGUE_COLORS[code] || "#0EA5E9";
+  const leagueMeta = getLeague(code);
+  const leagueName = leagueMeta.name;
+  const leagueEmblem = leagueMeta.emblem;
+  const color = leagueMeta.color;
 
   useEffect(() => {
     fetchAll();

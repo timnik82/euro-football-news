@@ -251,6 +251,10 @@ const translations = {
       yrs: "лет", notFound: "Команда не найдена",
       pos: { goalkeeper: "Вратари", defence: "Защитники", midfield: "Полузащитники", offence: "Нападающие" },
     },
+    player: {
+      club: "Клуб", nationality: "Гражданство", age: "Возраст", born: "Родился",
+      number: "Номер", contract: "Контракт", notFound: "Игрок не найден",
+    },
     settings: { language: "Язык", title: "Настройки" },
     search: {
       placeholder: "Поиск команд и игроков...",
