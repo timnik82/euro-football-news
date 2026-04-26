@@ -2,98 +2,111 @@
 I want to build a PWA primarily to be used on a 11-inch tablet for a 10-year-old kid with up-to-date news about European football matches (Premier League, Champions League, Portuguese League, etc.). News should include latest scores, statistics, and short stories. Use a free API service. The app should have a simple login for saving favorites. No specific color preferences initially, but it needs to be kid-friendly. PRODUCT REQUIREMENTS include interactive league/team/player pages, offline support, multi-language support, and visually engaging UI components.
 
 **User's preferred language**: Russian (RU)
-*(INSTRUCTION FOR NEXT AGENT: You MUST respond to the user in Russian ONLY)*
+*(INSTRUCT FOR NEXT AGENT: You MUST automatically detect the user's primary language from their messages inside the trajectory tag and respond to the user in Russian ONLY)*
 
 **what currently exists?** 
-A functional, tablet-optimized PWA built with React, FastAPI, and MongoDB. It integrates the  API (free tier) and caches data in MongoDB. Features include JWT Auth, multi-language support (EN, RU, PT), an offline Service Worker, PWA icons, a Homepage dashboard, League pages (standings, matches, top scorers, season progress bar), Team profiles, and interactive Modals for Match Details (timeline, H2H, penalties, winner highlights) and Player Details. Most recently, a Global Search overlay was added for searching teams and players.
+A functional, tablet-optimized PWA built with React, FastAPI, and MongoDB. It integrates the  API (free tier) and caches data to bypass limits. Features include JWT Auth, multi-language support (EN, RU, PT), an offline Service Worker, and a Global Search. Recently, custom user-provided PWA icons and iPad-specific splash screens were generated and integrated. The UI features a consistent Goal Kick branding with the custom icon across pages. The homepage layout has been refined to show Match Stories (with descriptive paragraphs removed, showing only dynamic headlines and stats) above Upcoming Matches, and the quick League navigation cards have been removed from the home view.
 
 **Last working item**: 
-- **Last item agent was working**: Implementing Global Search for teams and players. The agent added a  backend endpoint, created a  component, updated  to include a search button, and verified the functionality.
-- **Status**: NONE (Agent successfully completed the task and finished the tool run; waiting for user's next input).
-- **Agent Testing Done**: Y
-- **Which testing method agent to use?**: NA (Testing is already done via  and  curl checks).
-- **User Testing Done**: N
+    - **Last item agent was working**: Removing the auto-generated descriptive paragraphs from the Match Stories section on the Homepage across all languages, per user request to keep only the dynamically generated headlines and API data.
+    - **Status**: NONE (Task completed by agent, awaiting next user instruction).
+    - **Agent Testing Done**: Y
+    - **Which testing method agent to use?**: NA (Testing already done via  and ).
+    - **User Testing Done**: N
 
 **All Pending/In progress Issue list**: 
-None. 
+None.
 
 **In progress Task List**: 
 None.
 
 **Upcoming and Future Tasks**
-*Upcoming Tasks:*
-- P1: Dark mode toggle (Suggested by agent, user agreed with the rest but prioritized search first).
-- P1: Push notifications for favorite team match alerts.
-
-*Future Tasks:*
-- P2: Did you know? fun facts (stadium, founded year).
-- P2: Penalty stats in top scorers list.
+    Upcoming Tasks:
+    - P1: Dark mode toggle (Discussed in previous fork, pending user initiation).
+    - P1: Push notifications for favorite team match alerts.
+    
+    Future Tasks:
+    - P2: Did you know? fun facts (stadium, founded year).
+    - P2: Penalty stats in top scorers list.
 
 **Completed work in this session**
-- Verified and fixed the implementation of the Season Progress Bar in  and Enriched Match Details in  (DONE)
-- Global search for teams and players including   endpoint and  UI (DONE)
+- Replaced default React PWA icons (, , etc.) with user-provided  using Python scripting (DONE)
+- Generated and implemented iPad-specific splash screens and touch icons in  (DONE)
+- Added the global custom brand icon next to the Goal Kick text across all main pages (, , , , ) (DONE)
+- Rearranged Homepage layout: Moved Match Stories above Upcoming Matches and removed the League cards section (DONE)
+- Refined Match Stories UI: Completely removed the auto-generated descriptive paragraphs in EN, RU, and PT, leaving only rule-based headlines (DONE)
 
 **Earlier issues found/mentioned but not fixed**
 None.
 
 **Known issue recurrence from previous fork**
-- Recurrence count: 0
-- Status: NA
+  - Recurrence count: 0
+  - Status: NA
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
 - Frontend: React, TailwindCSS, Shadcn UI patterns, PWA Service Worker.
-- Backend: FastAPI, PyJWT (Cookie-based Auth), HTTPX.
-- Database: MongoDB (Caching football API responses to bypass 10 req/min limit, User favorites).
+- Backend: FastAPI, PyJWT (Cookie-based Auth).
+- Database: MongoDB.
+- Image Processing: Python scripts (, ) used dynamically to generate PWA assets from SVG.
 
 **key DB schema**
   - : {email, hashed_password, favorites: {leagues: [], teams: []}}
   - : {key, data, timestamp}
 
 **changes in tech stack**
-  - No new stack changes this session.
+  - No changes. Installed  and  temporarily in the environment to process the user's SVG, but not added to requirements as it was a one-off build step.
 
 **All files of reference** 
--  (Updated to include  API. Note: dynamic routes are kept at the bottom).
--  (Created to handle global search UI).
--  (Updated to trigger SearchModal).
--  (Updated to correctly render the season progress bar).
--  (Updated with search and matchday localization).
+-  (Updated with Apple splash screen and touch icon meta tags).
+-  (Generated image assets: , , , ).
+-  (Updated to include brand icon).
+-  (Reordered layout, removed leagues section, removed descriptive paragraphs from match stories, added brand icon).
+- , , ,  (Updated to include brand icon).
+-  (Adjusted logic for match story translations).
 
 **Areas that need refactoring**: 
--  is growing large (~650 lines) handling routing, caching, data transformation, and auth. Future scaling may require separating routers, but avoid splitting unless specifically needed to prevent breaking functionality.
+-  is large (~650 lines). Keep this in mind if major backend features are added, but do not refactor preemptively.
 
 **key api endpoints**
 - Backend: , , , , , , 
 - External: 
 
 **Critical Info for New Agent** 
-- **Route Ordering**: Ensure all new static backend routes (like ) are placed *before* dynamic routes (like ) in  to prevent route shadowing.
-- **Language**: The user prefers Russian. You MUST reply in Russian.
-- **API Limits**: The free tier of  allows exactly 10 requests/minute. Always utilize the MongoDB cache in  instead of hitting the external API directly.
+- **User Preference:** The user actively reviews UI layout and texts. They recently decided to *remove* generated text paragraphs from Match Stories because they felt repetitive. **Do not attempt to re-add generated text summaries** to the match stories unless specifically requested; they rely solely on dynamic headlines and stats now.
+- **Language:** Reply strictly in Russian.
+- **API Limits:** Free tier of  allows exactly 10 requests/minute. Always rely on the MongoDB caching mechanism in .
+- **Assets:** Custom PWA icons and iPad splash screens have been fully generated and linked. Do not overwrite them.
 
 **documents and test reports created in this job**
-  -  (Updated with Global Search completion)
+  -  (Continuously updated with completed PWA asset and UI layout tasks)
+  -  (Existing file containing admin credentials)
 
 **Last 10 User Messages and any pending HUMAN messages** 
-1. Вариант а. Остальное согласен (COMPLETED - User agreed to implement Global Search option)
-2. Давай сделаем глобальный поиск команд и игроков. (COMPLETED - Implemented and tested)
-3. проведи минимальное тестирование (COMPLETED - Tested progress bar, match modal, and search using screenshot tool)
+1. Да, да, только нижний абзац — описание на главный. Все остальное остается: счет и так далее... (COMPLETED)
+2. Слушай, я только что посмотрел. Давай вообще уберем эти фразы, пока что они не особо имеют смысла... (COMPLETED)
+3. Давай только в блоке обзоров на главный. Можно легкий тон. Да, можно аккуратный текст. (COMPLETED)
+4. Давай вариант 2 чтобы было корректно на 3х языках (COMPLETED)
+5. Да, ну, собственно, на что бы это заменить? Насколько я понимаю, и API... не предоставляет никаких резюме... (COMPLETED)
+6. Нужно ли убрать повторяющуюся фразу «упорная борьба на поле» в разделе обзор матчей?... (COMPLETED)
+7. Только на главной. А секцию лиги можно вообще убрать с главной... (COMPLETED)
+8. на главной странице, обзоры матчей должны быть над ближайшими матчами. (COMPLETED)
+9. Ещё и другие места куда ты перечислил ￼ (COMPLETED)
+10. добавь главную эконку рядом с надписью Goal Kick (COMPLETED)
 
-*(No pending user messages to execute; await user's next directive, likely related to Dark Mode or Push Notifications).*
+*(No pending user messages to execute. Await next user directive, potentially regarding dark mode or notifications).*
 
 **Project Health Check:**
 - Broken: None.
-- Mocked: Match stories modules on the homepage are programmatically generated using translations because the free tier API does not provide a news endpoint.
+- Mocked: Match story headlines are generated programmatically based on score logic, as the API lacks a dedicated news/stories endpoint.
 
 **3rd Party Integrations** 
 -  API — requires User API Key (already present in ).
--  (Image Generation) — uses Emergent LLM Key (used in early forks for icons).
 
 **Testing status**
-  - Testing agent used after significant changes: NO (Main agent self-tested thoroughly)
+  - Testing agent used after significant changes: NO (Main agent self-tested thoroughly via screenshots and JS linting)
   - Troubleshoot agent used after agent stuck in loop: NO
   - Test files created: None
   - Known regressions: None
@@ -103,4 +116,4 @@ Email:
 Password: 
 
 **What agent forgot to execute**
-The agent completed everything requested successfully and conducted thorough screenshot testing. Nothing was missed.</analysis>
+Nothing was missed. The agent followed all user instructions regarding layout changes, PWA asset generation, and text removals flawlessly.</analysis>
