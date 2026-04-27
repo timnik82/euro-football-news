@@ -8,6 +8,7 @@ import MatchCard from "@/components/MatchCard";
 import MatchDetailModal from "@/components/MatchDetailModal";
 import { BrandHeading } from "@/components/BrandHeading";
 import SettingsGear from "@/components/SettingsGear";
+import NextFavoriteMatchHero from "@/components/NextFavoriteMatchHero";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Zap, Newspaper, ChevronRight, Calendar } from "lucide-react";
 
@@ -20,23 +21,28 @@ export default function HomePage() {
   const [todayMatches, setTodayMatches] = useState([]);
   const [upcomingMatches, setUpcomingMatches] = useState([]);
   const [stories, setStories] = useState([]);
+  const [favoriteTeams, setFavoriteTeams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedMatchId, setSelectedMatchId] = useState(null);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [user]);
 
   const fetchData = async () => {
     try {
-      const [todayRes, upcomingRes, storiesRes] = await Promise.allSettled([
+      const [todayRes, upcomingRes, storiesRes, favsRes] = await Promise.allSettled([
         axios.get(`${API}/matches/today`),
         axios.get(`${API}/matches/upcoming`),
         axios.get(`${API}/stories`),
+        user ? axios.get(`${API}/favorites`, { withCredentials: true }) : Promise.resolve({ data: [] }),
       ]);
       if (todayRes.status === "fulfilled") setTodayMatches(todayRes.value.data);
       if (upcomingRes.status === "fulfilled") setUpcomingMatches(upcomingRes.value.data);
       if (storiesRes.status === "fulfilled") setStories(storiesRes.value.data);
+      if (favsRes.status === "fulfilled") {
+        setFavoriteTeams(favsRes.value.data.filter((f) => f.type === "team"));
+      }
     } catch (err) {
       console.error("Failed to fetch data:", err);
     } finally {
@@ -47,6 +53,19 @@ export default function HomePage() {
   const hasMatchesToday = todayMatches.length > 0;
   const displayMatches = hasMatchesToday ? todayMatches : upcomingMatches.slice(0, 6);
   const localizedStories = stories.map((s) => localizeStory(s, language));
+
+  // Find soonest upcoming match for any favorite team (across both today + upcoming)
+  const favIds = new Set(favoriteTeams.map((f) => f.item_id));
+  const matchPool = [...todayMatches, ...upcomingMatches].filter(
+    (m) => favIds.has(String(m.homeTeam?.id)) || favIds.has(String(m.awayTeam?.id))
+  );
+  matchPool.sort((a, b) => new Date(a.utcDate) - new Date(b.utcDate));
+  const nextFavMatch = matchPool[0];
+  const nextFavTeam = nextFavMatch
+    ? favoriteTeams.find(
+        (f) => f.item_id === String(nextFavMatch.homeTeam?.id) || f.item_id === String(nextFavMatch.awayTeam?.id)
+      )
+    : null;
 
   const formattedDate = new Date().toLocaleDateString(dateLocale, {
     weekday: "long", month: "long", day: "numeric",
@@ -77,6 +96,15 @@ export default function HomePage() {
         </div>
       ) : (
         <>
+          {/* Next favorite team match hero */}
+          {nextFavMatch && nextFavTeam && (
+            <NextFavoriteMatchHero
+              match={nextFavMatch}
+              favoriteTeam={nextFavTeam}
+              onClick={setSelectedMatchId}
+            />
+          )}
+
           {/* Match Stories */}
           {localizedStories.length > 0 && (
             <section className="mb-8 animate-slide-up" style={{ animationDelay: "0.05s" }}>

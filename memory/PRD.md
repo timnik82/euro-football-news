@@ -109,6 +109,14 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - Dropped dead English headline/summary generator from backend `/api/stories` (frontend already localizes via `localizeStory`); endpoint now returns minimal payload (match_id, teams, score, competition, date, matchday)
 - Backend dropped from 657 → 626 lines; LeaguePage from 368 → 352 lines
 
+### Phase 13 — "Next Favorite Match" Hero on Homepage (done — Feb 2026)
+- Added `NextFavoriteMatchHero` component: gradient hero card showing the soonest upcoming match for any of the user's favorite teams
+- Live countdown (days/hours/minutes/seconds) updating every second
+- Shows favorite team's crest + name with HOME/AWAY label and opponent
+- Click opens existing `MatchDetailModal`
+- Added EN/RU/PT translations under `nextMatch.*`
+- HomePage now also fetches user favorites (when logged in) alongside today/upcoming/stories
+
 ## Key Technical Details
 - Frontend: React, TailwindCSS, Shadcn UI, PWA Service Worker
 - Backend: FastAPI, PyJWT (cookie auth), HTTPX

@@ -89,6 +89,15 @@ const translations = {
     offline: "You're offline - showing cached data",
     loading: "Loading...",
     loadingSub: "Getting the latest scores",
+    nextMatch: {
+      title: "Next match for your team",
+      home: "Home",
+      away: "Away",
+      days: "Days",
+      hours: "Hours",
+      minutes: "Min",
+      seconds: "Sec",
+    },
     story: {
       homeDominant: [
         "{home} storms past {away}!",
@@ -266,6 +275,15 @@ const translations = {
     offline: "Нет сети - показываем сохранённые данные",
     loading: "Загрузка...",
     loadingSub: "Собираем последние результаты",
+    nextMatch: {
+      title: "Следующий матч твоей команды",
+      home: "Дома",
+      away: "В гостях",
+      days: "Дн",
+      hours: "Час",
+      minutes: "Мин",
+      seconds: "Сек",
+    },
     story: {
       homeDominant: [
         "{home} уверенно разобрался с {away}.",
@@ -443,6 +461,15 @@ const translations = {
     offline: "Estas offline - a mostrar dados guardados",
     loading: "A carregar...",
     loadingSub: "A obter os ultimos resultados",
+    nextMatch: {
+      title: "Proximo jogo da tua equipa",
+      home: "Em casa",
+      away: "Fora",
+      days: "Dias",
+      hours: "Horas",
+      minutes: "Min",
+      seconds: "Seg",
+    },
     story: {
       homeDominant: [
         "{home} foi claramente superior a {away}.",
