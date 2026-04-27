@@ -141,12 +141,20 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - Limited GNews to the first 2 strongest queries per match to respect free-tier request limits
 - Added `refresh=true` query param for `/api/matches/{match_id}/story` so provider retries can be forced without changing frontend UI
 
+### Phase 17 — Reliable RSS Match Report Sources (done — Apr 2026)
+- Added RSS source layer before generic news APIs for match-specific stories
+- Configured RSS feeds through backend env `MATCH_REPORT_RSS_FEEDS` instead of hardcoding URLs in frontend/code
+- Initial reliable RSS feeds: BBC Sport Football and ESPN Soccer
+- RSS items are normalized into the same article format as API providers: title, description, url, imageUrl, sourceName, publishedAt, provider
+- RSS candidates use the same match relevance scoring and are preferred slightly when relevant
+- Self-test: both RSS feeds return 200 and contain feed items; current sample football-data.org matches still had no exact RSS match-report source, so fallback remained correct
+
 ## Key Technical Details
 - Frontend: React, TailwindCSS, Shadcn UI, PWA Service Worker
 - Backend: FastAPI, PyJWT (cookie auth), HTTPX
 - Database: MongoDB (caching + user favorites)
 - API: football-data.org (free tier, 10 req/min, 5-30min cache)
-- News providers: GNews, NewsData.io, NewsAPI.org (backend-only keys, normalized article format, graceful fallback)
+- News providers: RSS feeds, GNews, NewsData.io, NewsAPI.org (backend-only config/keys, normalized article format, graceful fallback)
 
 ## DB Schema
 - `users`: {email, hashed_password, favorites: {leagues: [], teams: []}}
@@ -180,4 +188,5 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - football-data.org free tier: 10 req/min limit, backend caches responses
 - Match-specific stories use external news providers when a relevant article is found; fallback stories are generated from match data and saved in MongoDB
 - Apr 2026 provider status: NewsData.io responds but often returns no exact report for current football-data.org matches; NewsAPI.org still rejects supplied key with 401 `apiKeyInvalid` even after activation recheck; GNews returns successfully with throttling but often no exact article for these matches. Fallback/cache flow remains essential.
+- Apr 2026 RSS status: BBC Sport Football and ESPN Soccer feeds are reachable, but did not contain exact reports for tested sample matches.
 - Response in Russian (user preference)

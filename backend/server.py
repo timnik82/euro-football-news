@@ -17,11 +17,13 @@ import secrets
 import asyncio
 import time
 from datetime import datetime, timezone, timedelta
+from email.utils import parsedate_to_datetime
 from pydantic import BaseModel, Field
 from typing import Optional
 from bson import ObjectId
 from urllib.parse import quote_plus
 import re
+import xml.etree.ElementTree as ET
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -36,7 +38,7 @@ db = mongo_client[os.environ['DB_NAME']]
 FOOTBALL_API_KEY = os.environ.get('FOOTBALL_API_KEY', '')
 FOOTBALL_API_BASE = "https://api.football-data.org/v4"
 COMPETITIONS = "PL,CL,PD,SA,BL1,FL1,PPL"
-MATCH_STORY_CACHE_VERSION = "match-story-news-v8"
+MATCH_STORY_CACHE_VERSION = "match-story-news-rss-v1"
 
 LEAGUES = {
     "PL": {"name": "Premier League", "country": "England", "emblem": "https://crests.football-data.org/PL.png"},
@@ -290,7 +292,16 @@ def parse_article_date(value: str):
             parsed = parsed.replace(tzinfo=timezone.utc)
         return parsed
     except Exception:
-        return None
+        try:
+            parsed = parsedate_to_datetime(value)
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            return parsed
+        except Exception:
+            return None
+
+def strip_html(value: str) -> str:
+    return clean_text(re.sub(r"<[^>]+>", " ", value or ""))
 
 def normalize_article_payload(provider: str, article: dict) -> Optional[dict]:
     if provider == "gnews":
@@ -312,6 +323,13 @@ def normalize_article_payload(provider: str, article: dict) -> Optional[dict]:
         url = article.get("url")
         source_name = (article.get("source") or {}).get("name")
         image_url = article.get("urlToImage")
+        published_at = article.get("publishedAt")
+        description = article.get("description")
+    elif provider == "rss":
+        title = article.get("title")
+        url = article.get("url")
+        source_name = article.get("sourceName")
+        image_url = article.get("imageUrl")
         published_at = article.get("publishedAt")
         description = article.get("description")
     else:
@@ -450,6 +468,90 @@ async def wait_for_gnews_slot():
             await asyncio.sleep(1.6 - elapsed)
         GNEWS_RATE_LIMIT_STATE["last_request_at"] = time.monotonic()
 
+def configured_rss_feeds() -> list[dict]:
+    raw_feeds = os.environ.get("MATCH_REPORT_RSS_FEEDS")
+    if not raw_feeds:
+        return []
+    try:
+        feeds = json.loads(raw_feeds)
+        return [feed for feed in feeds if feed.get("name") and feed.get("url")]
+    except Exception as e:
+        logger.info(f"RSS feed config invalid: {e}")
+        return []
+
+def rss_child_text(item, tag_name: str) -> str:
+    node = item.find(tag_name)
+    return node.text if node is not None and node.text else ""
+
+def rss_item_image(item) -> Optional[str]:
+    enclosure = item.find("enclosure")
+    if enclosure is not None:
+        enclosure_type = enclosure.attrib.get("type", "")
+        enclosure_url = enclosure.attrib.get("url")
+        if enclosure_url and enclosure_type.startswith("image"):
+            return enclosure_url
+    for child in list(item):
+        tag = child.tag.lower()
+        if tag.endswith("thumbnail") or tag.endswith("content"):
+            url = child.attrib.get("url")
+            medium = child.attrib.get("medium", "")
+            content_type = child.attrib.get("type", "")
+            if url and ("image" in content_type or medium == "image" or tag.endswith("thumbnail")):
+                return url
+    return None
+
+def parse_rss_articles(xml_text: str, feed_name: str) -> list[dict]:
+    try:
+        root = ET.fromstring(xml_text)
+    except Exception as e:
+        logger.info(f"RSS parse failed for {feed_name}: {e}")
+        return []
+    articles = []
+    for item in root.findall(".//item")[:25]:
+        title = rss_child_text(item, "title")
+        url = rss_child_text(item, "link")
+        description = strip_html(rss_child_text(item, "description"))
+        published_at = rss_child_text(item, "pubDate") or rss_child_text(item, "date")
+        normalized = normalize_article_payload("rss", {
+            "title": title,
+            "url": url,
+            "description": description,
+            "publishedAt": parse_article_date(published_at).isoformat() if parse_article_date(published_at) else published_at,
+            "imageUrl": rss_item_image(item),
+            "sourceName": feed_name,
+        })
+        if normalized:
+            articles.append(normalized)
+    return articles
+
+async def fetch_rss_articles_for_match(match: dict) -> list[dict]:
+    feeds = configured_rss_feeds()
+    if not feeds:
+        return []
+    articles = []
+    seen_urls = set()
+    async with httpx.AsyncClient(timeout=10.0, headers={"User-Agent": "GoalKickKidApp/1.0"}) as http:
+        for feed in feeds:
+            try:
+                resp = await http.get(feed["url"])
+                if resp.status_code != 200:
+                    logger.info(f"RSS feed {feed['name']} returned {resp.status_code}")
+                    continue
+                for article in parse_rss_articles(resp.text, feed["name"]):
+                    if article["url"] in seen_urls:
+                        continue
+                    relevance = article_relevance_score(article, match)
+                    if relevance >= 9:
+                        article["relevanceScore"] = relevance + 2
+                        articles.append(article)
+                        seen_urls.add(article["url"])
+            except Exception as e:
+                logger.info(f"RSS feed {feed['name']} failed: {e}")
+    articles.sort(key=lambda a: (a.get("relevanceScore", 0), 1 if a.get("imageUrl") else 0, a.get("publishedAt") or ""), reverse=True)
+    for article in articles:
+        article.pop("relevanceScore", None)
+    return articles[:5]
+
 async def fetch_news_articles_for_match(match: dict, language: str) -> list[dict]:
     news_language = "en"
     newsapi_key = os.environ.get("NEWSAPI_KEY")
@@ -480,8 +582,8 @@ async def fetch_news_articles_for_match(match: dict, language: str) -> list[dict
         },
     ]
     queries = build_match_queries(match)
-    articles = []
-    seen_urls = set()
+    articles = await fetch_rss_articles_for_match(match)
+    seen_urls = {article["url"] for article in articles}
 
     async with httpx.AsyncClient(timeout=7.0) as http:
         for query_index, query in enumerate(queries):
