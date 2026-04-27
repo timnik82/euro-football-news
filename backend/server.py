@@ -34,6 +34,7 @@ db = mongo_client[os.environ['DB_NAME']]
 FOOTBALL_API_KEY = os.environ.get('FOOTBALL_API_KEY', '')
 FOOTBALL_API_BASE = "https://api.football-data.org/v4"
 COMPETITIONS = "PL,CL,PD,SA,BL1,FL1,PPL"
+MATCH_STORY_CACHE_VERSION = "match-story-news-v4"
 
 LEAGUES = {
     "PL": {"name": "Premier League", "country": "England", "emblem": "https://crests.football-data.org/PL.png"},
@@ -280,7 +281,10 @@ def parse_article_date(value: str):
     if not value:
         return None
     try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed
     except Exception:
         return None
 
@@ -342,6 +346,12 @@ def contains_any(text: str, aliases: list[str]) -> bool:
 
 def article_relevance_score(article: dict, match: dict) -> int:
     text = f"{article.get('title', '')} {article.get('description', '')} {article.get('sourceName', '')}".lower()
+    blocked_terms = [
+        "transfer", "scout", "rumour", "rumor", "roster", "prediction", "predicted lineup",
+        "lineup", "line-up", "betting", "odds", "signing", "contract", "market"
+    ]
+    if any(term in text for term in blocked_terms):
+        return 0
     home = match.get("homeTeam") or {}
     away = match.get("awayTeam") or {}
     competition = match.get("competition") or {}
@@ -349,18 +359,24 @@ def article_relevance_score(article: dict, match: dict) -> int:
     home_score = score.get("home")
     away_score = score.get("away")
     score_value = 0
+    has_home = contains_any(text, team_aliases(home))
+    has_away = contains_any(text, team_aliases(away))
+    has_competition = bool(competition.get("name") and competition["name"].lower() in text)
+    has_score = False
+    has_match_keyword = any(k in text for k in ["match report", "report", "highlights", "win", "draw", "beat", "defeat", "victory", "held", "equaliser", "goals"])
 
-    if contains_any(text, team_aliases(home)):
+    if has_home:
         score_value += 5
-    if contains_any(text, team_aliases(away)):
+    if has_away:
         score_value += 5
-    if competition.get("name") and competition["name"].lower() in text:
+    if has_competition:
         score_value += 2
     if home_score is not None and away_score is not None:
         patterns = [f"{home_score}-{away_score}", f"{home_score}:{away_score}", f"{home_score} {away_score}"]
         if any(p in text for p in patterns):
+            has_score = True
             score_value += 4
-    if any(k in text for k in ["match report", "report", "highlights", "win", "draw", "beat", "defeat", "victory"]):
+    if has_match_keyword:
         score_value += 2
     if article.get("imageUrl"):
         score_value += 1
@@ -375,11 +391,19 @@ def article_relevance_score(article: dict, match: dict) -> int:
     trusted = ["uefa", "premier league", "bbc", "sky sports", "espn", "the athletic", "goal", "marca", "record", "abola", "bundesliga", "ligue 1", "serie a"]
     if any(name in source for name in trusted):
         score_value += 3
+    if not (has_home and has_away):
+        return 0
+    if not (has_score or has_competition or has_match_keyword):
+        return 0
     return score_value
 
 def build_match_queries(match: dict) -> list[str]:
-    home = (match.get("homeTeam") or {}).get("name") or (match.get("homeTeam") or {}).get("shortName") or ""
-    away = (match.get("awayTeam") or {}).get("name") or (match.get("awayTeam") or {}).get("shortName") or ""
+    home_team = match.get("homeTeam") or {}
+    away_team = match.get("awayTeam") or {}
+    home = home_team.get("shortName") or home_team.get("name") or ""
+    away = away_team.get("shortName") or away_team.get("name") or ""
+    home_full = home_team.get("name") or home
+    away_full = away_team.get("name") or away
     competition = (match.get("competition") or {}).get("name") or ""
     score = match.get("score", {}).get("fullTime", {})
     home_score = score.get("home")
@@ -388,13 +412,13 @@ def build_match_queries(match: dict) -> list[str]:
     queries = []
     if home and away and home_score is not None and away_score is not None:
         queries.append(f"{home} {away} {home_score}-{away_score} {date} match report")
+        queries.append(f"{home} {away} {home_score} {away_score} highlights")
     if home and away and competition:
         queries.append(f"{home} vs {away} {competition} match report")
+    if home_full != home or away_full != away:
+        queries.append(f"{home_full} {away_full} football match report")
     if home and away:
-        queries.extend([
-            f"{home} {away} highlights",
-            f"{home} {away} football match report",
-        ])
+        queries.append(f"{home} {away} highlights")
         if home_score is not None and away_score is not None:
             if home_score == away_score:
                 queries.append(f"{home} {away} draw")
@@ -402,34 +426,44 @@ def build_match_queries(match: dict) -> list[str]:
                 winner = home if home_score > away_score else away
                 loser = away if home_score > away_score else home
                 queries.append(f"{winner} win against {loser}")
-    return queries[:3]
+    deduped = []
+    for query in queries:
+        if query and query not in deduped:
+            deduped.append(query)
+    return deduped[:4]
 
 def provider_safe_query(query: str, provider_name: str) -> str:
     if provider_name == "gnews":
-        return re.sub(r"\b(\d+)-(\d+)\b", r"\1 \2", query)
+        without_score_dash = re.sub(r"\b(\d+)-(\d+)\b", r"\1 \2", query)
+        return re.sub(r"\b\d{4}-\d{2}-\d{2}\b", "", without_score_dash).strip()
     return query
 
 async def fetch_news_articles_for_match(match: dict, language: str) -> list[dict]:
+    news_language = "en"
+    newsapi_key = os.environ.get("NEWSAPI_KEY")
     provider_configs = [
         {
             "name": "gnews",
             "url": "https://gnews.io/api/v4/search",
             "key": os.environ.get("GNEWS_API_KEY"),
-            "params": lambda q: {"q": q, "token": os.environ.get("GNEWS_API_KEY"), "lang": language, "max": 10, "sortby": "publishedAt"},
+            "params": lambda q: {"q": q, "token": os.environ.get("GNEWS_API_KEY"), "lang": news_language, "max": 10, "sortby": "publishedAt"},
+            "headers": lambda: {},
             "extract": lambda payload: payload.get("articles", []),
         },
         {
             "name": "newsdata",
             "url": "https://newsdata.io/api/1/news",
             "key": os.environ.get("NEWSDATA_API_KEY"),
-            "params": lambda q: {"q": q, "apikey": os.environ.get("NEWSDATA_API_KEY"), "language": language, "category": "sports", "size": 10},
+            "params": lambda q: {"q": q, "apikey": os.environ.get("NEWSDATA_API_KEY"), "language": news_language, "category": "sports", "size": 10},
+            "headers": lambda: {},
             "extract": lambda payload: payload.get("results", []),
         },
         {
             "name": "newsapi",
             "url": "https://newsapi.org/v2/everything",
-            "key": os.environ.get("NEWSAPI_KEY"),
-            "params": lambda q: {"q": q, "apiKey": os.environ.get("NEWSAPI_KEY"), "language": language, "pageSize": 10, "sortBy": "publishedAt"},
+            "key": newsapi_key,
+            "params": lambda q: {"q": q, "language": news_language, "pageSize": 10, "sortBy": "publishedAt"},
+            "headers": lambda: {"X-Api-Key": newsapi_key} if newsapi_key else {},
             "extract": lambda payload: payload.get("articles", []),
         },
     ]
@@ -444,7 +478,11 @@ async def fetch_news_articles_for_match(match: dict, language: str) -> list[dict
                     continue
                 try:
                     safe_query = provider_safe_query(query, provider["name"])
-                    resp = await http.get(provider["url"], params=provider["params"](safe_query))
+                    resp = await http.get(
+                        provider["url"],
+                        params=provider["params"](safe_query),
+                        headers=provider["headers"](),
+                    )
                     if resp.status_code != 200:
                         logger.info(f"News provider {provider['name']} returned {resp.status_code}")
                         continue
@@ -733,7 +771,7 @@ async def get_match_story(match_id: int, lang: str = "en"):
         {"matchId": match_id, "language": language},
         {"_id": 0}
     )
-    if cached_story:
+    if cached_story and cached_story.get("cacheVersion") == MATCH_STORY_CACHE_VERSION:
         return cached_story
 
     match_data = await fetch_football_data(f"/matches/{match_id}", cache_minutes=10)
@@ -753,6 +791,7 @@ async def get_match_story(match_id: int, lang: str = "en"):
         "sources": story_body.get("sources", []),
         "videoUrl": story_body.get("videoUrl"),
         "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "cacheVersion": MATCH_STORY_CACHE_VERSION,
     }
     await db.match_stories.update_one(
         {"matchId": match_id, "language": language},

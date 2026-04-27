@@ -126,6 +126,14 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - Added EN/RU/PT UI translations under `matchStory.*`
 - Added backend regression tests in `/app/backend/tests/test_match_story_api.py`
 
+### Phase 15 — News Provider Retry & Relevance Hardening (done — Apr 2026)
+- Re-tested NewsAPI key using both query-param and `X-Api-Key` header methods; provider still returns 401 invalid key
+- Improved provider search to use English source search regardless of UI language, while keeping generated story output localized EN/RU/PT
+- Improved match queries to prefer short team names and try exact score/highlights/report variants
+- Fixed NewsData date parsing bug for naive timestamps that could interrupt relevance scoring
+- Added stricter article filtering to reject transfer/scouting/lineup/prediction/betting-style results that are not true match stories
+- Bumped match-story cache version so old fallback stories are regenerated after provider-search fixes
+
 ## Key Technical Details
 - Frontend: React, TailwindCSS, Shadcn UI, PWA Service Worker
 - Backend: FastAPI, PyJWT (cookie auth), HTTPX
@@ -164,5 +172,5 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - Homepage Match Stories headlines are generated programmatically; match-detail stories can use news providers or fallback to match data
 - football-data.org free tier: 10 req/min limit, backend caches responses
 - Match-specific stories use external news providers when a relevant article is found; fallback stories are generated from match data and saved in MongoDB
-- Apr 2026 self-test: NewsData.io responded successfully; NewsAPI.org rejected supplied key with 401; GNews returned provider rate/error responses during checks, so fallback/cache flow remains essential
+- Apr 2026 provider status: NewsData.io responds but often returns no exact report for current football-data.org matches; NewsAPI.org rejects supplied key with 401 invalid key even via header auth; GNews key works intermittently but hit 400/429 provider responses during checks. Fallback/cache flow remains essential.
 - Response in Russian (user preference)
