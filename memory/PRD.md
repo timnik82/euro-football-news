@@ -134,6 +134,13 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - Added stricter article filtering to reject transfer/scouting/lineup/prediction/betting-style results that are not true match stories
 - Bumped match-story cache version so old fallback stories are regenerated after provider-search fixes
 
+### Phase 16 — NewsAPI Recheck & GNews Rate Limit Fix (done — Apr 2026)
+- Re-checked activated NewsAPI.org key through `everything` and `top-headlines` endpoints using `X-Api-Key`; provider still returns `401 apiKeyInvalid`
+- Fixed GNews query sanitizer order so dates are removed before score dash normalization, preventing syntax-error 400 responses
+- Added global async GNews throttle across requests: at least 1.6 seconds between GNews calls
+- Limited GNews to the first 2 strongest queries per match to respect free-tier request limits
+- Added `refresh=true` query param for `/api/matches/{match_id}/story` so provider retries can be forced without changing frontend UI
+
 ## Key Technical Details
 - Frontend: React, TailwindCSS, Shadcn UI, PWA Service Worker
 - Backend: FastAPI, PyJWT (cookie auth), HTTPX
@@ -172,5 +179,5 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - Homepage Match Stories headlines are generated programmatically; match-detail stories can use news providers or fallback to match data
 - football-data.org free tier: 10 req/min limit, backend caches responses
 - Match-specific stories use external news providers when a relevant article is found; fallback stories are generated from match data and saved in MongoDB
-- Apr 2026 provider status: NewsData.io responds but often returns no exact report for current football-data.org matches; NewsAPI.org rejects supplied key with 401 invalid key even via header auth; GNews key works intermittently but hit 400/429 provider responses during checks. Fallback/cache flow remains essential.
+- Apr 2026 provider status: NewsData.io responds but often returns no exact report for current football-data.org matches; NewsAPI.org still rejects supplied key with 401 `apiKeyInvalid` even after activation recheck; GNews returns successfully with throttling but often no exact article for these matches. Fallback/cache flow remains essential.
 - Response in Russian (user preference)

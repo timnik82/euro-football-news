@@ -14,6 +14,8 @@ import jwt
 import httpx
 import json
 import secrets
+import asyncio
+import time
 from datetime import datetime, timezone, timedelta
 from pydantic import BaseModel, Field
 from typing import Optional
@@ -34,7 +36,7 @@ db = mongo_client[os.environ['DB_NAME']]
 FOOTBALL_API_KEY = os.environ.get('FOOTBALL_API_KEY', '')
 FOOTBALL_API_BASE = "https://api.football-data.org/v4"
 COMPETITIONS = "PL,CL,PD,SA,BL1,FL1,PPL"
-MATCH_STORY_CACHE_VERSION = "match-story-news-v4"
+MATCH_STORY_CACHE_VERSION = "match-story-news-v8"
 
 LEAGUES = {
     "PL": {"name": "Premier League", "country": "England", "emblem": "https://crests.football-data.org/PL.png"},
@@ -58,6 +60,8 @@ LEAGUE_COLORS = {
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
+GNEWS_RATE_LIMIT_LOCK = asyncio.Lock()
+GNEWS_RATE_LIMIT_STATE = {"last_request_at": 0.0}
 
 # ============ AUTH ============
 JWT_ALGORITHM = "HS256"
@@ -434,20 +438,28 @@ def build_match_queries(match: dict) -> list[str]:
 
 def provider_safe_query(query: str, provider_name: str) -> str:
     if provider_name == "gnews":
-        without_score_dash = re.sub(r"\b(\d+)-(\d+)\b", r"\1 \2", query)
-        return re.sub(r"\b\d{4}-\d{2}-\d{2}\b", "", without_score_dash).strip()
-    return query
+        without_date = re.sub(r"\b\d{4}-\d{2}-\d{2}\b", "", query)
+        without_score_dash = re.sub(r"\b(\d+)-(\d+)\b", r"\1 \2", without_date)
+        return clean_text(without_score_dash)
+    return clean_text(query)
+
+async def wait_for_gnews_slot():
+    async with GNEWS_RATE_LIMIT_LOCK:
+        elapsed = time.monotonic() - GNEWS_RATE_LIMIT_STATE["last_request_at"]
+        if elapsed < 1.6:
+            await asyncio.sleep(1.6 - elapsed)
+        GNEWS_RATE_LIMIT_STATE["last_request_at"] = time.monotonic()
 
 async def fetch_news_articles_for_match(match: dict, language: str) -> list[dict]:
     news_language = "en"
     newsapi_key = os.environ.get("NEWSAPI_KEY")
     provider_configs = [
         {
-            "name": "gnews",
-            "url": "https://gnews.io/api/v4/search",
-            "key": os.environ.get("GNEWS_API_KEY"),
-            "params": lambda q: {"q": q, "token": os.environ.get("GNEWS_API_KEY"), "lang": news_language, "max": 10, "sortby": "publishedAt"},
-            "headers": lambda: {},
+            "name": "newsapi",
+            "url": "https://newsapi.org/v2/everything",
+            "key": newsapi_key,
+            "params": lambda q: {"q": q, "language": news_language, "pageSize": 10, "sortBy": "publishedAt"},
+            "headers": lambda: {"X-Api-Key": newsapi_key} if newsapi_key else {},
             "extract": lambda payload: payload.get("articles", []),
         },
         {
@@ -459,11 +471,11 @@ async def fetch_news_articles_for_match(match: dict, language: str) -> list[dict
             "extract": lambda payload: payload.get("results", []),
         },
         {
-            "name": "newsapi",
-            "url": "https://newsapi.org/v2/everything",
-            "key": newsapi_key,
-            "params": lambda q: {"q": q, "language": news_language, "pageSize": 10, "sortBy": "publishedAt"},
-            "headers": lambda: {"X-Api-Key": newsapi_key} if newsapi_key else {},
+            "name": "gnews",
+            "url": "https://gnews.io/api/v4/search",
+            "key": os.environ.get("GNEWS_API_KEY"),
+            "params": lambda q: {"q": q, "token": os.environ.get("GNEWS_API_KEY"), "lang": news_language, "max": 3},
+            "headers": lambda: {},
             "extract": lambda payload: payload.get("articles", []),
         },
     ]
@@ -472,12 +484,16 @@ async def fetch_news_articles_for_match(match: dict, language: str) -> list[dict
     seen_urls = set()
 
     async with httpx.AsyncClient(timeout=7.0) as http:
-        for query in queries:
+        for query_index, query in enumerate(queries):
             for provider in provider_configs:
                 if not provider["key"]:
                     continue
+                if provider["name"] == "gnews" and query_index >= 2:
+                    continue
                 try:
                     safe_query = provider_safe_query(query, provider["name"])
+                    if provider["name"] == "gnews":
+                        await wait_for_gnews_slot()
                     resp = await http.get(
                         provider["url"],
                         params=provider["params"](safe_query),
@@ -765,13 +781,13 @@ async def get_match_detail(match_id: int):
     return result
 
 @api_router.get("/matches/{match_id}/story", response_model=MatchStoryResponse)
-async def get_match_story(match_id: int, lang: str = "en"):
+async def get_match_story(match_id: int, lang: str = "en", refresh: bool = False):
     language = lang if lang in {"en", "ru", "pt"} else "en"
     cached_story = await db.match_stories.find_one(
         {"matchId": match_id, "language": language},
         {"_id": 0}
     )
-    if cached_story and cached_story.get("cacheVersion") == MATCH_STORY_CACHE_VERSION:
+    if not refresh and cached_story and cached_story.get("cacheVersion") == MATCH_STORY_CACHE_VERSION:
         return cached_story
 
     match_data = await fetch_football_data(f"/matches/{match_id}", cache_minutes=10)
