@@ -29,7 +29,7 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 ├── frontend/
 │   ├── public/ (manifest.json, sw.js, custom icons)
 │   ├── src/
-│   │   ├── components/ (MatchCard, Navigation, MatchDetailModal, PlayerDetailModal, SettingsGear)
+│   │   ├── components/ (MatchCard, MatchDetailModal, MatchStorySection, PlayerDetailModal, SearchModal, SettingsGear)
 │   │   ├── contexts/ (AuthContext, LanguageContext)
 │   │   ├── i18n/ (translations.js)
 │   │   ├── pages/ (HomePage, LeaguePage, TeamPage, FavoritesPage, LoginPage)
@@ -117,15 +117,26 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - Added EN/RU/PT translations under `nextMatch.*`
 - HomePage now also fetches user favorites (when logged in) alongside today/upcoming/stories
 
+### Phase 14 — Match-specific Educational "Story of the Match" (done — Apr 2026)
+- Added backend endpoint `/api/matches/{match_id}/story?lang=en|ru|pt`
+- Story flow checks MongoDB `match_stories` cache first, then searches configured news providers, normalizes article responses, scores match relevance, and saves the final processed story
+- Integrated GNews, NewsData.io, and NewsAPI.org provider adapters via backend-only environment variables
+- Added child-friendly fallback story generation from exact match data when no relevant external article is available
+- Added `MatchStorySection` inside `MatchDetailModal` with loading, fallback, image, source links, optional video link, key points, and "Why it matters"
+- Added EN/RU/PT UI translations under `matchStory.*`
+- Added backend regression tests in `/app/backend/tests/test_match_story_api.py`
+
 ## Key Technical Details
 - Frontend: React, TailwindCSS, Shadcn UI, PWA Service Worker
 - Backend: FastAPI, PyJWT (cookie auth), HTTPX
 - Database: MongoDB (caching + user favorites)
 - API: football-data.org (free tier, 10 req/min, 5-30min cache)
+- News providers: GNews, NewsData.io, NewsAPI.org (backend-only keys, normalized article format, graceful fallback)
 
 ## DB Schema
 - `users`: {email, hashed_password, favorites: {leagues: [], teams: []}}
 - `football_cache`: {url, response_data, timestamp}
+- `match_stories`: {matchId, language, title, summary, keyPoints, whyItMatters, isFallback, imageUrl, sources, videoUrl, generatedAt}
 
 ## Key API Endpoints
 - `/api/auth/login`, `/api/auth/register`, `/api/auth/me`
@@ -133,6 +144,7 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - `/api/leagues/{code}/matches`, `/api/leagues/{code}/scorers`
 - `/api/leagues/{code}/season` (new — season progress)
 - `/api/matches/{match_id}` (with H2H)
+- `/api/matches/{match_id}/story?lang=en|ru|pt` (cached child-friendly story for exact match)
 - `/api/teams/{team_id}`, `/api/players/{player_id}`
 - `/api/favorites`
 
@@ -141,6 +153,7 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 ### P1 — Upcoming
 - Dark mode toggle
 - Push notifications for favorite team match alerts
+- Optional language-switch UI automation for `Story of the Match`
 
 ### P2 — Future
 - "Did you know?" fun facts (stadium, founded year)
@@ -148,6 +161,8 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 
 ## Known Issues / Notes
 - Route ordering in server.py is critical: `/matches/today` MUST precede `/matches/{match_id}`
-- Match Stories are generated programmatically (no news API in free tier)
+- Homepage Match Stories headlines are generated programmatically; match-detail stories can use news providers or fallback to match data
 - football-data.org free tier: 10 req/min limit, backend caches responses
+- Match-specific stories use external news providers when a relevant article is found; fallback stories are generated from match data and saved in MongoDB
+- Apr 2026 self-test: NewsData.io responded successfully; NewsAPI.org rejected supplied key with 401; GNews returned provider rate/error responses during checks, so fallback/cache flow remains essential
 - Response in Russian (user preference)

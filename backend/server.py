@@ -15,7 +15,7 @@ import httpx
 import json
 import secrets
 from datetime import datetime, timezone, timedelta
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from bson import ObjectId
 from urllib.parse import quote_plus
@@ -142,7 +142,7 @@ class MatchStoryResponse(BaseModel):
     whyItMatters: str
     isFallback: bool
     imageUrl: Optional[str] = None
-    sources: list[NormalizedArticle] = []
+    sources: list[NormalizedArticle] = Field(default_factory=list)
     videoUrl: Optional[str] = None
     generatedAt: str
 
