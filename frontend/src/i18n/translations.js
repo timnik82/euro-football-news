@@ -98,6 +98,17 @@ const translations = {
       minutes: "Min",
       seconds: "Sec",
     },
+    matchStory: {
+      title: "Story of the Match",
+      loading: "Finding the story behind this match…",
+      fallback: "We could not find a full story for this match yet, but here is what we know from the match result.",
+      fallbackBadge: "Result story",
+      sources: "Sources",
+      source: "Source",
+      why: "Why it matters",
+      watchHighlights: "Watch highlights",
+      error: "We could not load the story right now. Try this match again later.",
+    },
     story: {
       homeDominant: [
         "{home} storms past {away}!",
@@ -284,6 +295,17 @@ const translations = {
       minutes: "Мин",
       seconds: "Сек",
     },
+    matchStory: {
+      title: "История матча",
+      loading: "Ищем историю этого матча…",
+      fallback: "Полный обзор этого матча пока не найден, но вот что понятно по результату.",
+      fallbackBadge: "По счёту",
+      sources: "Источники",
+      source: "Источник",
+      why: "Почему это важно",
+      watchHighlights: "Смотреть хайлайты",
+      error: "Не удалось загрузить историю прямо сейчас. Попробуйте открыть этот матч позже.",
+    },
     story: {
       homeDominant: [
         "{home} уверенно разобрался с {away}.",
@@ -469,6 +491,17 @@ const translations = {
       hours: "Horas",
       minutes: "Min",
       seconds: "Seg",
+    },
+    matchStory: {
+      title: "História do Jogo",
+      loading: "A procurar a história deste jogo…",
+      fallback: "Ainda não encontrámos uma história completa deste jogo, mas aqui está o que sabemos pelo resultado.",
+      fallbackBadge: "Pelo resultado",
+      sources: "Fontes",
+      source: "Fonte",
+      why: "Porque importa",
+      watchHighlights: "Ver highlights",
+      error: "Não foi possível carregar a história agora. Tenta abrir este jogo mais tarde.",
     },
     story: {
       homeDominant: [

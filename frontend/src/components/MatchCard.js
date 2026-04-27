@@ -26,7 +26,6 @@ export default function MatchCard({ match, onClick }) {
       data-testid={`match-card-${match.id}`}
       className={`card-tactile p-4 cursor-pointer ${isLive ? "border-green-400" : ""}`}
       onClick={() => onClick && onClick(match.id)}
-      onClick={() => onClick && onClick(match.id)}
     >
       <div className="flex items-center gap-2 mb-3">
         {match.competition?.emblem && (

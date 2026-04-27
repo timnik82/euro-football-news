@@ -18,9 +18,12 @@ from datetime import datetime, timezone, timedelta
 from pydantic import BaseModel
 from typing import Optional
 from bson import ObjectId
+from urllib.parse import quote_plus
+import re
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 # MongoDB
 mongo_url = os.environ['MONGO_URL']
@@ -119,6 +122,29 @@ class FavoriteInput(BaseModel):
     name: str
     crest: str = ""
     league_code: str = ""
+
+class NormalizedArticle(BaseModel):
+    title: str
+    description: Optional[str] = None
+    url: str
+    imageUrl: Optional[str] = None
+    sourceName: Optional[str] = None
+    publishedAt: Optional[str] = None
+    videoUrl: Optional[str] = None
+    provider: Optional[str] = None
+
+class MatchStoryResponse(BaseModel):
+    matchId: int
+    language: str
+    title: str
+    summary: str
+    keyPoints: list[str]
+    whyItMatters: str
+    isFallback: bool
+    imageUrl: Optional[str] = None
+    sources: list[NormalizedArticle] = []
+    videoUrl: Optional[str] = None
+    generatedAt: str
 
 @api_router.post("/auth/register")
 async def register(data: RegisterInput, response: Response):
@@ -245,6 +271,296 @@ def build_story_payload(match):
         "competition": {"name": comp.get("name", ""), "code": comp.get("code", ""), "emblem": comp.get("emblem", "")},
         "date": match.get("utcDate", ""),
         "matchday": match.get("matchday"),
+    }
+
+def clean_text(value: str) -> str:
+    return re.sub(r"\s+", " ", (value or "").strip())
+
+def parse_article_date(value: str):
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+def normalize_article_payload(provider: str, article: dict) -> Optional[dict]:
+    if provider == "gnews":
+        title = article.get("title")
+        url = article.get("url")
+        source_name = (article.get("source") or {}).get("name")
+        image_url = article.get("image")
+        published_at = article.get("publishedAt")
+        description = article.get("description")
+    elif provider == "newsdata":
+        title = article.get("title")
+        url = article.get("link")
+        source_name = article.get("source_id") or article.get("source_name")
+        image_url = article.get("image_url")
+        published_at = article.get("pubDate")
+        description = article.get("description")
+    elif provider == "newsapi":
+        title = article.get("title")
+        url = article.get("url")
+        source_name = (article.get("source") or {}).get("name")
+        image_url = article.get("urlToImage")
+        published_at = article.get("publishedAt")
+        description = article.get("description")
+    else:
+        return None
+
+    title = clean_text(title)
+    url = clean_text(url)
+    if not title or not url:
+        return None
+    return {
+        "title": title[:240],
+        "description": clean_text(description)[:320] if description else None,
+        "url": url,
+        "imageUrl": image_url or None,
+        "sourceName": clean_text(source_name) or provider,
+        "publishedAt": published_at,
+        "videoUrl": article.get("video_url") or article.get("videoUrl"),
+        "provider": provider,
+    }
+
+def team_aliases(team: dict) -> list[str]:
+    aliases = []
+    for key in ("name", "shortName", "tla"):
+        value = clean_text(team.get(key, ""))
+        if value and value not in aliases:
+            aliases.append(value)
+    name = clean_text(team.get("name", ""))
+    for suffix in (" FC", " CF", " AFC", " SAD"):
+        if name.endswith(suffix):
+            aliases.append(name[:-len(suffix)])
+    return [a for a in aliases if len(a) >= 2]
+
+def contains_any(text: str, aliases: list[str]) -> bool:
+    text_low = text.lower()
+    return any(alias.lower() in text_low for alias in aliases)
+
+def article_relevance_score(article: dict, match: dict) -> int:
+    text = f"{article.get('title', '')} {article.get('description', '')} {article.get('sourceName', '')}".lower()
+    home = match.get("homeTeam") or {}
+    away = match.get("awayTeam") or {}
+    competition = match.get("competition") or {}
+    score = match.get("score", {}).get("fullTime", {})
+    home_score = score.get("home")
+    away_score = score.get("away")
+    score_value = 0
+
+    if contains_any(text, team_aliases(home)):
+        score_value += 5
+    if contains_any(text, team_aliases(away)):
+        score_value += 5
+    if competition.get("name") and competition["name"].lower() in text:
+        score_value += 2
+    if home_score is not None and away_score is not None:
+        patterns = [f"{home_score}-{away_score}", f"{home_score}:{away_score}", f"{home_score} {away_score}"]
+        if any(p in text for p in patterns):
+            score_value += 4
+    if any(k in text for k in ["match report", "report", "highlights", "win", "draw", "beat", "defeat", "victory"]):
+        score_value += 2
+    if article.get("imageUrl"):
+        score_value += 1
+
+    published = parse_article_date(article.get("publishedAt"))
+    if published and match.get("utcDate"):
+        match_date = parse_article_date(match.get("utcDate"))
+        if match_date and abs((published - match_date).days) <= 5:
+            score_value += 2
+
+    source = (article.get("sourceName") or "").lower()
+    trusted = ["uefa", "premier league", "bbc", "sky sports", "espn", "the athletic", "goal", "marca", "record", "abola", "bundesliga", "ligue 1", "serie a"]
+    if any(name in source for name in trusted):
+        score_value += 3
+    return score_value
+
+def build_match_queries(match: dict) -> list[str]:
+    home = (match.get("homeTeam") or {}).get("name") or (match.get("homeTeam") or {}).get("shortName") or ""
+    away = (match.get("awayTeam") or {}).get("name") or (match.get("awayTeam") or {}).get("shortName") or ""
+    competition = (match.get("competition") or {}).get("name") or ""
+    score = match.get("score", {}).get("fullTime", {})
+    home_score = score.get("home")
+    away_score = score.get("away")
+    date = (match.get("utcDate") or "")[:10]
+    queries = []
+    if home and away and home_score is not None and away_score is not None:
+        queries.append(f"{home} {away} {home_score}-{away_score} {date} match report")
+    if home and away and competition:
+        queries.append(f"{home} vs {away} {competition} match report")
+    if home and away:
+        queries.extend([
+            f"{home} {away} highlights",
+            f"{home} {away} football match report",
+        ])
+        if home_score is not None and away_score is not None:
+            if home_score == away_score:
+                queries.append(f"{home} {away} draw")
+            else:
+                winner = home if home_score > away_score else away
+                loser = away if home_score > away_score else home
+                queries.append(f"{winner} win against {loser}")
+    return queries[:3]
+
+def provider_safe_query(query: str, provider_name: str) -> str:
+    if provider_name == "gnews":
+        return re.sub(r"\b(\d+)-(\d+)\b", r"\1 \2", query)
+    return query
+
+async def fetch_news_articles_for_match(match: dict, language: str) -> list[dict]:
+    provider_configs = [
+        {
+            "name": "gnews",
+            "url": "https://gnews.io/api/v4/search",
+            "key": os.environ.get("GNEWS_API_KEY"),
+            "params": lambda q: {"q": q, "token": os.environ.get("GNEWS_API_KEY"), "lang": language, "max": 10, "sortby": "publishedAt"},
+            "extract": lambda payload: payload.get("articles", []),
+        },
+        {
+            "name": "newsdata",
+            "url": "https://newsdata.io/api/1/news",
+            "key": os.environ.get("NEWSDATA_API_KEY"),
+            "params": lambda q: {"q": q, "apikey": os.environ.get("NEWSDATA_API_KEY"), "language": language, "category": "sports", "size": 10},
+            "extract": lambda payload: payload.get("results", []),
+        },
+        {
+            "name": "newsapi",
+            "url": "https://newsapi.org/v2/everything",
+            "key": os.environ.get("NEWSAPI_KEY"),
+            "params": lambda q: {"q": q, "apiKey": os.environ.get("NEWSAPI_KEY"), "language": language, "pageSize": 10, "sortBy": "publishedAt"},
+            "extract": lambda payload: payload.get("articles", []),
+        },
+    ]
+    queries = build_match_queries(match)
+    articles = []
+    seen_urls = set()
+
+    async with httpx.AsyncClient(timeout=7.0) as http:
+        for query in queries:
+            for provider in provider_configs:
+                if not provider["key"]:
+                    continue
+                try:
+                    safe_query = provider_safe_query(query, provider["name"])
+                    resp = await http.get(provider["url"], params=provider["params"](safe_query))
+                    if resp.status_code != 200:
+                        logger.info(f"News provider {provider['name']} returned {resp.status_code}")
+                        continue
+                    payload = resp.json()
+                    for raw_article in provider["extract"](payload):
+                        normalized = normalize_article_payload(provider["name"], raw_article)
+                        if not normalized or normalized["url"] in seen_urls:
+                            continue
+                        relevance = article_relevance_score(normalized, match)
+                        if relevance >= 9:
+                            normalized["relevanceScore"] = relevance
+                            articles.append(normalized)
+                            seen_urls.add(normalized["url"])
+                except Exception as e:
+                    logger.info(f"News provider {provider['name']} failed: {e}")
+
+    articles.sort(key=lambda a: (a.get("relevanceScore", 0), 1 if a.get("imageUrl") else 0, a.get("publishedAt") or ""), reverse=True)
+    for article in articles:
+        article.pop("relevanceScore", None)
+    return articles[:5]
+
+def build_child_match_story(match: dict, language: str, articles: list[dict]) -> dict:
+    lang = language if language in {"en", "ru", "pt"} else "en"
+    home = (match.get("homeTeam") or {}).get("shortName") or (match.get("homeTeam") or {}).get("name") or "Home"
+    away = (match.get("awayTeam") or {}).get("shortName") or (match.get("awayTeam") or {}).get("name") or "Away"
+    comp = (match.get("competition") or {}).get("name") or "football"
+    score = match.get("score", {}).get("fullTime", {})
+    half = match.get("score", {}).get("halfTime", {})
+    h = score.get("home")
+    a = score.get("away")
+    match_date = (match.get("utcDate") or "")[:10]
+    has_score = h is not None and a is not None
+    winner = home if has_score and h > a else away if has_score and a > h else None
+    is_draw = has_score and h == a
+    source_names = [s.get("sourceName") for s in articles[:3] if s.get("sourceName")]
+    source_phrase = ", ".join(source_names[:2])
+
+    if lang == "ru":
+        title = f"История матча: {home} — {away}"
+        if has_score:
+            if is_draw:
+                summary = f"{home} и {away} сыграли {h}:{a} в турнире {comp}. Обе команды получили по одному очку, а матч стал хорошим примером того, как важно сохранять концентрацию до финального свистка."
+            else:
+                summary = f"{winner} победил в матче {home} — {away} со счётом {h}:{a} в турнире {comp}. Это была важная игра, где решали точность, терпение и командная работа."
+        else:
+            summary = f"Матч {home} — {away} проходит в турнире {comp}. Мы собрали короткую и понятную историю по доступным данным матча."
+        key_points = [
+            f"Игра: {home} против {away}.",
+            f"Турнир: {comp}.",
+        ]
+        if has_score:
+            key_points.append(f"Итоговый счёт: {h}:{a}.")
+        if half.get("home") is not None and half.get("away") is not None:
+            key_points.append(f"После первого тайма было {half.get('home')}:{half.get('away')}.")
+        if articles:
+            key_points.append(f"Мы нашли внешние источники по этому матчу: {source_phrase}.")
+        why = "Этот результат важен, потому что каждая игра влияет на таблицу, уверенность команд и настроение болельщиков. По таким матчам удобно учиться читать счёт, замечать ход игры и понимать турнир."
+        fallback_note = "Полный внешний обзор пока не найден, поэтому история составлена по данным матча."
+    elif lang == "pt":
+        title = f"História do jogo: {home} — {away}"
+        if has_score:
+            if is_draw:
+                summary = f"{home} e {away} empataram {h}-{a} em {comp}. As duas equipas somaram um ponto, num jogo que mostra como a concentração conta até ao fim."
+            else:
+                summary = f"{winner} venceu o jogo {home} — {away} por {h}-{a} em {comp}. Foi uma partida em que precisão, paciência e trabalho de equipa fizeram diferença."
+        else:
+            summary = f"O jogo {home} — {away} faz parte de {comp}. Reunimos uma história curta e simples com os dados disponíveis."
+        key_points = [
+            f"Jogo: {home} contra {away}.",
+            f"Competição: {comp}.",
+        ]
+        if has_score:
+            key_points.append(f"Resultado final: {h}-{a}.")
+        if half.get("home") is not None and half.get("away") is not None:
+            key_points.append(f"Ao intervalo estava {half.get('home')}-{half.get('away')}.")
+        if articles:
+            key_points.append(f"Encontrámos fontes externas sobre este jogo: {source_phrase}.")
+        why = "Este resultado importa porque cada jogo mexe com a tabela, a confiança das equipas e a energia dos adeptos. Também ajuda a aprender a ler resultados e a perceber uma competição."
+        fallback_note = "Ainda não encontrámos uma reportagem completa, por isso a história usa os dados do jogo."
+    else:
+        title = f"Story of the Match: {home} — {away}"
+        if has_score:
+            if is_draw:
+                summary = f"{home} and {away} finished {h}-{a} in {comp}. Both teams earned one point, and the match showed why focus matters until the final whistle."
+            else:
+                summary = f"{winner} won the match between {home} and {away} by {h}-{a} in {comp}. It was a game where accuracy, patience, and teamwork made the difference."
+        else:
+            summary = f"{home} and {away} meet in {comp}. Here is a short, simple story from the match information we have so far."
+        key_points = [
+            f"Match: {home} against {away}.",
+            f"Competition: {comp}.",
+        ]
+        if has_score:
+            key_points.append(f"Final score: {h}-{a}.")
+        if half.get("home") is not None and half.get("away") is not None:
+            key_points.append(f"At half-time it was {half.get('home')}-{half.get('away')}.")
+        if articles:
+            key_points.append(f"External match sources were found, including {source_phrase}.")
+        why = "This result matters because every match can shape the table, team confidence, and supporter excitement. It is also a great way to learn how scores and competitions work."
+        fallback_note = "We could not find a full story for this match yet, so this story uses the match result data."
+
+    if not articles and fallback_note not in key_points:
+        key_points.append(fallback_note)
+
+    image_url = next((a.get("imageUrl") for a in articles if a.get("imageUrl")), None)
+    video_url = next((a.get("videoUrl") for a in articles if a.get("videoUrl")), None)
+    return {
+        "title": title,
+        "summary": summary,
+        "keyPoints": key_points[:5],
+        "whyItMatters": why,
+        "isFallback": len(articles) == 0,
+        "imageUrl": image_url,
+        "sources": articles[:3],
+        "videoUrl": video_url,
+        "matchDate": match_date,
     }
 
 # Football endpoints
@@ -409,6 +725,41 @@ async def get_match_detail(match_id: int):
             ],
         }
     return result
+
+@api_router.get("/matches/{match_id}/story", response_model=MatchStoryResponse)
+async def get_match_story(match_id: int, lang: str = "en"):
+    language = lang if lang in {"en", "ru", "pt"} else "en"
+    cached_story = await db.match_stories.find_one(
+        {"matchId": match_id, "language": language},
+        {"_id": 0}
+    )
+    if cached_story:
+        return cached_story
+
+    match_data = await fetch_football_data(f"/matches/{match_id}", cache_minutes=10)
+    articles = []
+    if match_data.get("status") == "FINISHED":
+        articles = await fetch_news_articles_for_match(match_data, language)
+    story_body = build_child_match_story(match_data, language, articles)
+    story_doc = {
+        "matchId": match_id,
+        "language": language,
+        "title": story_body["title"],
+        "summary": story_body["summary"],
+        "keyPoints": story_body["keyPoints"],
+        "whyItMatters": story_body["whyItMatters"],
+        "isFallback": story_body["isFallback"],
+        "imageUrl": story_body.get("imageUrl"),
+        "sources": story_body.get("sources", []),
+        "videoUrl": story_body.get("videoUrl"),
+        "generatedAt": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.match_stories.update_one(
+        {"matchId": match_id, "language": language},
+        {"$set": story_doc},
+        upsert=True
+    )
+    return story_doc
 
 
 @api_router.get("/search")
@@ -603,6 +954,7 @@ async def startup():
     await db.api_cache.create_index("key", unique=True)
     await db.api_cache.create_index("expires_at", expireAfterSeconds=0)
     await db.favorites.create_index([("user_id", 1), ("type", 1), ("item_id", 1)], unique=True)
+    await db.match_stories.create_index([("matchId", 1), ("language", 1)], unique=True)
     await seed_admin()
     os.makedirs("/app/memory", exist_ok=True)
     admin_email = os.environ.get("ADMIN_EMAIL", "admin@example.com")

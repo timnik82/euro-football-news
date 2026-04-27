@@ -5,25 +5,40 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Clock, MapPin, User, Swords, Calendar, Trophy, Zap } from "lucide-react";
+import MatchStorySection from "@/components/MatchStorySection";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 export default function MatchDetailModal({ matchId, open, onClose }) {
-  const { t, dateLocale } = useLanguage();
+  const { t, dateLocale, language } = useLanguage();
   const [data, setData] = useState(null);
+  const [story, setStory] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [storyLoading, setStoryLoading] = useState(false);
+  const [storyError, setStoryError] = useState(false);
 
   useEffect(() => {
     if (open && matchId) {
       setLoading(true);
       setData(null);
+      setStory(null);
+      setStoryError(false);
+      setStoryLoading(true);
       axios
         .get(`${API}/matches/${matchId}`)
         .then((r) => setData(r.data))
         .catch(console.error)
         .finally(() => setLoading(false));
+      axios
+        .get(`${API}/matches/${matchId}/story`, { params: { lang: language } })
+        .then((r) => setStory(r.data))
+        .catch((err) => {
+          console.error(err);
+          setStoryError(true);
+        })
+        .finally(() => setStoryLoading(false));
     }
-  }, [open, matchId]);
+  }, [open, matchId, language]);
 
   if (!open) return null;
 
@@ -196,6 +211,8 @@ export default function MatchDetailModal({ matchId, open, onClose }) {
                 </div>
               )}
             </div>
+
+            <MatchStorySection story={story} loading={storyLoading} error={storyError} />
 
             {/* Head to Head */}
             {m.h2h && m.h2h.recentMatches?.length > 0 && (
