@@ -149,12 +149,21 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - RSS candidates use the same match relevance scoring and are preferred slightly when relevant
 - Self-test: both RSS feeds return 200 and contain feed items; current sample football-data.org matches still had no exact RSS match-report source, so fallback remained correct
 
+### Phase 18 — Official Premier League Match Reports Source (done — Apr 2026)
+- Investigated official `premierleague.com` RSS/feed paths; no public RSS/XML feed found for match reports
+- Found official Premier League content endpoint behind the Match Reports grid: `api.premierleague.com/content/premierleague/playlist/EN/4406257`
+- Added backend env `MATCH_REPORT_CONTENT_SOURCES` for official JSON/content sources, separate from RSS feeds
+- Added parser for official Premier League match-report playlist items and normalized them into the same article format
+- Official PL source is preferred in relevance scoring and supplies source links/images when a match is matched
+- Added Premier League alias matching (`Man Utd`, `Spurs`, `Palace`, `Wolves`, etc.) so official article titles match football-data.org team names
+- Self-test with recent PL matches: Man United–Brentford, Arsenal–Newcastle, Liverpool–Crystal Palace all returned non-fallback stories with official source links/images
+
 ## Key Technical Details
 - Frontend: React, TailwindCSS, Shadcn UI, PWA Service Worker
 - Backend: FastAPI, PyJWT (cookie auth), HTTPX
 - Database: MongoDB (caching + user favorites)
 - API: football-data.org (free tier, 10 req/min, 5-30min cache)
-- News providers: RSS feeds, GNews, NewsData.io, NewsAPI.org (backend-only config/keys, normalized article format, graceful fallback)
+- News providers: official PL content source, RSS feeds, GNews, NewsData.io, NewsAPI.org (backend-only config/keys, normalized article format, graceful fallback)
 
 ## DB Schema
 - `users`: {email, hashed_password, favorites: {leagues: [], teams: []}}
@@ -189,4 +198,5 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - Match-specific stories use external news providers when a relevant article is found; fallback stories are generated from match data and saved in MongoDB
 - Apr 2026 provider status: NewsData.io responds but often returns no exact report for current football-data.org matches; NewsAPI.org still rejects supplied key with 401 `apiKeyInvalid` even after activation recheck; GNews returns successfully with throttling but often no exact article for these matches. Fallback/cache flow remains essential.
 - Apr 2026 RSS status: BBC Sport Football and ESPN Soccer feeds are reachable, but did not contain exact reports for tested sample matches.
+- Apr 2026 Premier League status: official PL match-report content source works and provides exact sources/images for tested PL matches.
 - Response in Russian (user preference)

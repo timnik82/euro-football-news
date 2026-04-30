@@ -38,7 +38,7 @@ db = mongo_client[os.environ['DB_NAME']]
 FOOTBALL_API_KEY = os.environ.get('FOOTBALL_API_KEY', '')
 FOOTBALL_API_BASE = "https://api.football-data.org/v4"
 COMPETITIONS = "PL,CL,PD,SA,BL1,FL1,PPL"
-MATCH_STORY_CACHE_VERSION = "match-story-news-rss-v1"
+MATCH_STORY_CACHE_VERSION = "match-story-official-content-v2"
 
 LEAGUES = {
     "PL": {"name": "Premier League", "country": "England", "emblem": "https://crests.football-data.org/PL.png"},
@@ -332,6 +332,13 @@ def normalize_article_payload(provider: str, article: dict) -> Optional[dict]:
         image_url = article.get("imageUrl")
         published_at = article.get("publishedAt")
         description = article.get("description")
+    elif provider == "official_content":
+        title = article.get("title")
+        url = article.get("url")
+        source_name = article.get("sourceName")
+        image_url = article.get("imageUrl")
+        published_at = article.get("publishedAt")
+        description = article.get("description")
     else:
         return None
 
@@ -360,6 +367,24 @@ def team_aliases(team: dict) -> list[str]:
     for suffix in (" FC", " CF", " AFC", " SAD"):
         if name.endswith(suffix):
             aliases.append(name[:-len(suffix)])
+    alias_map = {
+        "manchester united": ["Man Utd", "Manchester United"],
+        "man united": ["Man Utd", "Manchester United"],
+        "manchester city": ["Man City", "Manchester City"],
+        "tottenham hotspur": ["Tottenham", "Spurs"],
+        "crystal palace": ["Crystal Palace", "Palace"],
+        "wolverhampton wanderers": ["Wolverhampton", "Wolves"],
+        "nottingham forest": ["Nottingham Forest", "Forest"],
+        "west ham united": ["West Ham", "West Ham United"],
+        "newcastle united": ["Newcastle", "Newcastle United"],
+        "brighton hove albion": ["Brighton", "Brighton & Hove Albion"],
+        "aston villa": ["Aston Villa", "Villa"],
+        "leeds united": ["Leeds", "Leeds United"],
+    }
+    team_text = " ".join(aliases).lower().replace("&", " ")
+    for key, mapped_aliases in alias_map.items():
+        if key in team_text:
+            aliases.extend(mapped_aliases)
     return [a for a in aliases if len(a) >= 2]
 
 def contains_any(text: str, aliases: list[str]) -> bool:
@@ -479,6 +504,17 @@ def configured_rss_feeds() -> list[dict]:
         logger.info(f"RSS feed config invalid: {e}")
         return []
 
+def configured_content_sources() -> list[dict]:
+    raw_sources = os.environ.get("MATCH_REPORT_CONTENT_SOURCES")
+    if not raw_sources:
+        return []
+    try:
+        sources = json.loads(raw_sources)
+        return [source for source in sources if source.get("name") and source.get("url")]
+    except Exception as e:
+        logger.info(f"Content source config invalid: {e}")
+        return []
+
 def rss_child_text(item, tag_name: str) -> str:
     node = item.find(tag_name)
     return node.text if node is not None and node.text else ""
@@ -552,6 +588,72 @@ async def fetch_rss_articles_for_match(match: dict) -> list[dict]:
         article.pop("relevanceScore", None)
     return articles[:5]
 
+def official_content_article_url(item: dict) -> str:
+    match_ref = next(
+        (ref for ref in item.get("references", []) if ref.get("type") == "SDP_FOOTBALL_MATCH" and ref.get("sid")),
+        None,
+    )
+    if match_ref:
+        return f"https://www.premierleague.com/en/match/{match_ref['sid']}/overview"
+    article_id = item.get("id")
+    segment = item.get("titleUrlSegment")
+    if article_id and segment:
+        return f"https://www.premierleague.com/en/news/{article_id}/{segment}"
+    return item.get("hotlinkUrl") or "https://www.premierleague.com/en/news"
+
+def parse_official_content_articles(payload: dict, source_name: str) -> list[dict]:
+    raw_items = payload.get("items", [])
+    articles = []
+    for raw_item in raw_items[:20]:
+        item = raw_item.get("response") or raw_item
+        title = item.get("title")
+        url = official_content_article_url(item)
+        description = item.get("description") or item.get("summary") or item.get("contentSummary")
+        normalized = normalize_article_payload("official_content", {
+            "title": title,
+            "url": url,
+            "description": description,
+            "publishedAt": item.get("date"),
+            "imageUrl": item.get("imageUrl"),
+            "sourceName": source_name,
+        })
+        if normalized:
+            articles.append(normalized)
+    return articles
+
+async def fetch_official_content_articles_for_match(match: dict) -> list[dict]:
+    sources = configured_content_sources()
+    if not sources:
+        return []
+    articles = []
+    seen_urls = set()
+    async with httpx.AsyncClient(timeout=10.0, headers={
+        "User-Agent": "GoalKickKidApp/1.0",
+        "Accept": "application/json",
+        "Origin": "https://www.premierleague.com",
+        "Referer": "https://www.premierleague.com/en/news",
+    }) as http:
+        for source in sources:
+            try:
+                resp = await http.get(source["url"])
+                if resp.status_code != 200:
+                    logger.info(f"Official content source {source['name']} returned {resp.status_code}")
+                    continue
+                for article in parse_official_content_articles(resp.json(), source["name"]):
+                    if article["url"] in seen_urls:
+                        continue
+                    relevance = article_relevance_score(article, match)
+                    if relevance >= 9:
+                        article["relevanceScore"] = relevance + 4
+                        articles.append(article)
+                        seen_urls.add(article["url"])
+            except Exception as e:
+                logger.info(f"Official content source {source['name']} failed: {e}")
+    articles.sort(key=lambda a: (a.get("relevanceScore", 0), 1 if a.get("imageUrl") else 0, a.get("publishedAt") or ""), reverse=True)
+    for article in articles:
+        article.pop("relevanceScore", None)
+    return articles[:5]
+
 async def fetch_news_articles_for_match(match: dict, language: str) -> list[dict]:
     news_language = "en"
     newsapi_key = os.environ.get("NEWSAPI_KEY")
@@ -582,7 +684,9 @@ async def fetch_news_articles_for_match(match: dict, language: str) -> list[dict
         },
     ]
     queries = build_match_queries(match)
-    articles = await fetch_rss_articles_for_match(match)
+    articles = await fetch_official_content_articles_for_match(match)
+    rss_articles = await fetch_rss_articles_for_match(match)
+    articles.extend([article for article in rss_articles if article["url"] not in {item["url"] for item in articles}])
     seen_urls = {article["url"] for article in articles}
 
     async with httpx.AsyncClient(timeout=7.0) as http:
