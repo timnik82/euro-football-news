@@ -158,6 +158,13 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - Added Premier League alias matching (`Man Utd`, `Spurs`, `Palace`, `Wolves`, etc.) so official article titles match football-data.org team names
 - Self-test with recent PL matches: Man United–Brentford, Arsenal–Newcastle, Liverpool–Crystal Palace all returned non-fallback stories with official source links/images
 
+### Phase 19 — Automatic System Dark Mode (done — May 2026)
+- Added system-driven dark mode via CSS `prefers-color-scheme: dark`; no in-app toggle required
+- Dark palette covers app background, cards, navigation, modals, inputs, tables, story panels, and common badge states
+- Added media-aware browser `theme-color` tags so supported mobile browsers can tint chrome for light/dark system modes
+- Kept manifest splash background light to preserve existing PWA startup polish while the app itself adapts after load
+- Verified with Playwright smoke tests: dark homepage, light homepage, and dark match modal load correctly
+
 ## Key Technical Details
 - Frontend: React, TailwindCSS, Shadcn UI, PWA Service Worker
 - Backend: FastAPI, PyJWT (cookie auth), HTTPX
@@ -183,9 +190,9 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 ## Backlog
 
 ### P1 — Upcoming
-- Dark mode toggle
 - Push notifications for favorite team match alerts
 - Optional language-switch UI automation for `Story of the Match`
+- Gamification / Achievements (e.g., daily quizzes like "Guess the player")
 
 ### P2 — Future
 - "Did you know?" fun facts (stadium, founded year)
@@ -199,4 +206,5 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - Apr 2026 provider status: NewsData.io responds but often returns no exact report for current football-data.org matches; NewsAPI.org still rejects supplied key with 401 `apiKeyInvalid` even after activation recheck; GNews returns successfully with throttling but often no exact article for these matches. Fallback/cache flow remains essential.
 - Apr 2026 RSS status: BBC Sport Football and ESPN Soccer feeds are reachable, but did not contain exact reports for tested sample matches.
 - Apr 2026 Premier League status: official PL match-report content source works and provides exact sources/images for tested PL matches.
+- May 2026 dark mode status: app now follows device/browser system theme automatically using `prefers-color-scheme`; there is intentionally no manual theme toggle yet.
 - Response in Russian (user preference)
