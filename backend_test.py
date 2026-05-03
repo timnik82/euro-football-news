@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 
 class FootballAPITester:
-    def __init__(self, base_url="https://match-story-hub.preview.emergentagent.com"):
+    def __init__(self, base_url="https://match-stories-hub.preview.emergentagent.com"):
         self.base_url = base_url
         self.token = None
         self.tests_run = 0
