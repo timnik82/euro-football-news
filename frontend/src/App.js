@@ -7,6 +7,7 @@ import LoginPage from "@/pages/LoginPage";
 import HomePage from "@/pages/HomePage";
 import LeagueDetail, { LeaguesList } from "@/pages/LeaguePage";
 import FavoritesPage from "@/pages/FavoritesPage";
+import GamesPage from "@/pages/GamesPage";
 import TeamPage from "@/pages/TeamPage";
 import { Toaster } from "@/components/ui/sonner";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
@@ -52,6 +53,7 @@ function AppLayout() {
         <Route path="/leagues" element={<LeaguesList />} />
         <Route path="/league/:code" element={<LeagueDetail />} />
         <Route path="/team/:id" element={<TeamPage />} />
+        <Route path="/games" element={user ? <GamesPage /> : <Navigate to="/login" />} />
         <Route path="/favorites" element={user ? <FavoritesPage /> : <Navigate to="/login" />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
