@@ -167,6 +167,16 @@ class DailyQuizResponse(BaseModel):
     options: list[QuizOption]
     rewardPoints: int
 
+class DailyCrestQuizResponse(BaseModel):
+    quizId: str
+    date: str
+    league: dict
+    question: str
+    hints: list[str]
+    crestUrl: str
+    options: list[QuizOption]
+    rewardPoints: int
+
 class QuizAnswerInput(BaseModel):
     quizId: str
     selectedOptionId: str
@@ -894,6 +904,14 @@ FALLBACK_QUIZ_PLAYERS = [
         "goals": 16,
     },
 ]
+FALLBACK_QUIZ_TEAMS = [
+    {"id": 65, "name": "Manchester City FC", "shortName": "Man City", "crest": "https://crests.football-data.org/65.png"},
+    {"id": 86, "name": "Real Madrid CF", "shortName": "Real Madrid", "crest": "https://crests.football-data.org/86.png"},
+    {"id": 5, "name": "FC Bayern München", "shortName": "Bayern", "crest": "https://crests.football-data.org/5.png"},
+    {"id": 81, "name": "FC Barcelona", "shortName": "Barcelona", "crest": "https://crests.football-data.org/81.png"},
+    {"id": 57, "name": "Arsenal FC", "shortName": "Arsenal", "crest": "https://crests.football-data.org/57.png"},
+    {"id": 109, "name": "Juventus FC", "shortName": "Juventus", "crest": "https://crests.football-data.org/109.png"},
+]
 
 def stable_number(seed: str, modulo: int) -> int:
     if modulo <= 0:
@@ -902,6 +920,10 @@ def stable_number(seed: str, modulo: int) -> int:
 
 def quiz_option_id(name: str) -> str:
     return "player-" + hashlib.sha1(name.encode("utf-8")).hexdigest()[:12]
+
+def team_quiz_option_id(team: dict) -> str:
+    raw_id = str(team.get("id") or team.get("name") or team.get("shortName") or "team")
+    return "team-" + hashlib.sha1(raw_id.encode("utf-8")).hexdigest()[:12]
 
 def localized_quiz_text(lang: str, key: str, values: dict) -> str:
     language = lang if lang in {"en", "ru", "pt"} else "en"
@@ -929,6 +951,36 @@ def localized_quiz_text(lang: str, key: str, values: dict) -> str:
             "nationality": "Nacionalidade: {nationality}",
             "correct": "Certo! É {player} do {team}. Ganhaste {points} pontos.",
             "wrong": "Quase! A resposta certa é {player} do {team}. Tenta outra vez amanhã.",
+        },
+    }
+    return templates[language][key].format(**values)
+
+def localized_crest_quiz_text(lang: str, key: str, values: dict) -> str:
+    language = lang if lang in {"en", "ru", "pt"} else "en"
+    templates = {
+        "en": {
+            "question": "Which club owns this crest?",
+            "league": "League: {league}",
+            "hint": "Look closely at the colours and shape",
+            "pick": "Pick the club name",
+            "correct": "Correct! This crest belongs to {team}. You earned {points} points.",
+            "wrong": "Almost! This crest belongs to {team}. Try another crest tomorrow.",
+        },
+        "ru": {
+            "question": "Какому клубу принадлежит эта эмблема?",
+            "league": "Лига: {league}",
+            "hint": "Посмотри внимательно на цвета и форму",
+            "pick": "Выбери название клуба",
+            "correct": "Верно! Это эмблема клуба {team}. Ты получил {points} очков.",
+            "wrong": "Почти! Это эмблема клуба {team}. Завтра будет новая эмблема.",
+        },
+        "pt": {
+            "question": "A que clube pertence este emblema?",
+            "league": "Liga: {league}",
+            "hint": "Olha bem para as cores e a forma",
+            "pick": "Escolhe o nome do clube",
+            "correct": "Certo! Este emblema é do {team}. Ganhaste {points} pontos.",
+            "wrong": "Quase! Este emblema é do {team}. Tenta outro emblema amanhã.",
         },
     }
     return templates[language][key].format(**values)
@@ -994,6 +1046,70 @@ async def get_daily_quiz_data(language: str = "en") -> dict:
         "correctTeam": values["team"],
     }
 
+async def get_daily_crest_quiz_data(language: str = "en") -> dict:
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    league_code = QUIZ_LEAGUE_CODES[stable_number(today + "crest", len(QUIZ_LEAGUE_CODES))]
+    league = LEAGUES[league_code]
+    teams = []
+    try:
+        data = await fetch_football_data(f"/competitions/{league_code}/standings", cache_minutes=60)
+        for standing in data.get("standings", []):
+            if standing.get("type") == "TOTAL" or not teams:
+                teams = [row.get("team") or {} for row in standing.get("table", [])]
+                if teams:
+                    break
+    except Exception as e:
+        logger.info(f"Daily crest quiz standings source failed for {league_code}: {e}")
+    valid_teams = [team for team in teams if team.get("crest") and (team.get("shortName") or team.get("name"))]
+    if len(valid_teams) < 4:
+        valid_teams = FALLBACK_QUIZ_TEAMS
+
+    correct = valid_teams[stable_number(today + league_code + "crest", min(len(valid_teams), 12))]
+    correct_name = correct.get("shortName") or correct.get("name")
+    option_teams = [correct]
+    seen_names = {correct_name}
+    for team in valid_teams:
+        name = team.get("shortName") or team.get("name")
+        if name and name not in seen_names:
+            option_teams.append(team)
+            seen_names.add(name)
+        if len(option_teams) == 4:
+            break
+    while len(option_teams) < 4:
+        for fallback in FALLBACK_QUIZ_TEAMS:
+            name = fallback.get("shortName") or fallback.get("name")
+            if name not in seen_names:
+                option_teams.append(fallback)
+                seen_names.add(name)
+            if len(option_teams) == 4:
+                break
+    options = [
+        {"id": team_quiz_option_id(team), "label": team.get("shortName") or team.get("name")}
+        for team in option_teams[:4]
+    ]
+    options.sort(key=lambda option: stable_number(today + option["id"], 1000000))
+    values = {
+        "league": league["name"],
+        "team": correct_name,
+        "points": QUIZ_REWARD_POINTS,
+    }
+    return {
+        "quizId": f"crest-quiz:{today}:{league_code}",
+        "date": today,
+        "league": {"code": league_code, "name": league["name"], "emblem": league.get("emblem", "")},
+        "question": localized_crest_quiz_text(language, "question", values),
+        "hints": [
+            localized_crest_quiz_text(language, "league", values),
+            localized_crest_quiz_text(language, "hint", values),
+            localized_crest_quiz_text(language, "pick", values),
+        ],
+        "crestUrl": correct.get("crest"),
+        "options": options,
+        "rewardPoints": QUIZ_REWARD_POINTS,
+        "correctOptionId": team_quiz_option_id(correct),
+        "correctTeam": correct_name,
+    }
+
 def calculate_quiz_streak(attempts: list[dict]) -> int:
     answered_dates = sorted({(attempt.get("quizId", "").split(":") + [""])[1] for attempt in attempts if attempt.get("quizId")}, reverse=True)
     if not answered_dates:
@@ -1048,13 +1164,13 @@ async def build_gamification_profile(user_id: str, language: str = "en") -> dict
     total_points = sum(int(attempt.get("pointsAwarded", 0)) for attempt in attempts)
     correct_answers = sum(1 for attempt in attempts if attempt.get("isCorrect"))
     current_streak = calculate_quiz_streak(attempts)
-    today_quiz = await get_daily_quiz_data(language)
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     profile = {
         "totalPoints": total_points,
         "quizzesPlayed": len(attempts),
         "correctAnswers": correct_answers,
         "currentStreak": current_streak,
-        "todayAnswered": any(attempt.get("quizId") == today_quiz["quizId"] for attempt in attempts),
+        "todayAnswered": any((attempt.get("quizId", "").split(":") + [""])[1] == today for attempt in attempts),
         "recentAttempts": attempts[:7],
     }
     profile["badges"] = build_badges(profile, language)
@@ -1416,6 +1532,20 @@ async def get_daily_quiz(lang: str = "en"):
         "rewardPoints": quiz["rewardPoints"],
     }
 
+@api_router.get("/gamification/crest-quiz", response_model=DailyCrestQuizResponse)
+async def get_daily_crest_quiz(lang: str = "en"):
+    quiz = await get_daily_crest_quiz_data(lang)
+    return {
+        "quizId": quiz["quizId"],
+        "date": quiz["date"],
+        "league": quiz["league"],
+        "question": quiz["question"],
+        "hints": quiz["hints"],
+        "crestUrl": quiz["crestUrl"],
+        "options": quiz["options"],
+        "rewardPoints": quiz["rewardPoints"],
+    }
+
 @api_router.get("/gamification/profile", response_model=GamificationProfileResponse)
 async def get_gamification_profile(request: Request, lang: str = "en"):
     user = await get_current_user(request)
@@ -1476,6 +1606,68 @@ async def answer_daily_quiz(data: QuizAnswerInput, request: Request):
         "goals": 0,
         "league": quiz["league"]["name"],
         "nationality": "",
+    })
+    return {
+        "quizId": data.quizId,
+        "selectedOptionId": data.selectedOptionId,
+        "correctOptionId": quiz["correctOptionId"],
+        "isCorrect": is_correct,
+        "pointsAwarded": points_awarded,
+        "alreadyAnswered": False,
+        "explanation": explanation,
+        "profile": profile,
+        "badges": profile["badges"],
+    }
+
+@api_router.post("/gamification/crest-quiz/answer", response_model=QuizAnswerResponse)
+async def answer_daily_crest_quiz(data: QuizAnswerInput, request: Request):
+    user = await get_current_user(request)
+    quiz = await get_daily_crest_quiz_data(data.language)
+    if data.quizId != quiz["quizId"]:
+        raise HTTPException(400, "Quiz is no longer active")
+
+    existing = await db.quiz_attempts.find_one(
+        {"user_id": user["_id"], "quizId": data.quizId},
+        {"_id": 0}
+    )
+    if existing:
+        profile = await build_gamification_profile(user["_id"], data.language)
+        explanation_key = "correct" if existing.get("isCorrect") else "wrong"
+        explanation = localized_crest_quiz_text(data.language, explanation_key, {
+            "team": quiz["correctTeam"],
+            "league": quiz["league"]["name"],
+            "points": existing.get("pointsAwarded", 0),
+        })
+        return {
+            "quizId": data.quizId,
+            "selectedOptionId": existing["selectedOptionId"],
+            "correctOptionId": existing["correctOptionId"],
+            "isCorrect": existing["isCorrect"],
+            "pointsAwarded": 0,
+            "alreadyAnswered": True,
+            "explanation": explanation,
+            "profile": profile,
+            "badges": profile["badges"],
+        }
+
+    is_correct = data.selectedOptionId == quiz["correctOptionId"]
+    points_awarded = QUIZ_REWARD_POINTS if is_correct else 2
+    attempt_doc = {
+        "user_id": user["_id"],
+        "quizId": data.quizId,
+        "selectedOptionId": data.selectedOptionId,
+        "correctOptionId": quiz["correctOptionId"],
+        "isCorrect": is_correct,
+        "pointsAwarded": points_awarded,
+        "answeredAt": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.quiz_attempts.insert_one(attempt_doc)
+    profile = await build_gamification_profile(user["_id"], data.language)
+    explanation_key = "correct" if is_correct else "wrong"
+    explanation = localized_crest_quiz_text(data.language, explanation_key, {
+        "team": quiz["correctTeam"],
+        "league": quiz["league"]["name"],
+        "points": points_awarded,
     })
     return {
         "quizId": data.quizId,

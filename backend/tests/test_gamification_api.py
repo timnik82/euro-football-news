@@ -58,6 +58,23 @@ def test_daily_quiz_ru_shape_and_no_answer_leak(api_client):
     assert "correctOptionId" not in data
 
 
+def test_crest_quiz_ru_shape_and_no_answer_leak(api_client):
+    response = api_client.get(f"{BASE_URL}/api/gamification/crest-quiz", params={"lang": "ru"}, timeout=30)
+    assert response.status_code == 200
+
+    data = response.json()
+    assert isinstance(data.get("quizId"), str) and data["quizId"].startswith("crest-quiz:")
+    assert isinstance(data.get("date"), str) and len(data["date"]) == 10
+    assert isinstance(data.get("league"), dict)
+    assert isinstance(data["league"].get("code"), str) and data["league"]["code"]
+    assert isinstance(data["question"], str) and data["question"].strip()
+    assert isinstance(data.get("hints"), list) and len(data["hints"]) >= 3
+    assert isinstance(data.get("crestUrl"), str) and data["crestUrl"].startswith("http")
+    assert isinstance(data.get("options"), list) and len(data["options"]) == 4
+    assert isinstance(data.get("rewardPoints"), int) and data["rewardPoints"] > 0
+    assert "correctOptionId" not in data
+
+
 def test_gamification_profile_requires_auth(api_client):
     response = api_client.get(f"{BASE_URL}/api/gamification/profile", params={"lang": "ru"}, timeout=20)
     assert response.status_code == 401
@@ -144,3 +161,126 @@ def test_daily_quiz_answer_single_attempt_and_duplicate(authenticated_client):
 
     profile_after_duplicate = duplicate_answer["profile"]
     assert profile_after_duplicate["quizzesPlayed"] == profile_after_first["quizzesPlayed"]
+
+
+def test_crest_quiz_answer_single_attempt_and_duplicate(authenticated_client):
+    quiz_response = authenticated_client.get(
+        f"{BASE_URL}/api/gamification/crest-quiz",
+        params={"lang": "ru"},
+        timeout=30,
+    )
+    assert quiz_response.status_code == 200
+    quiz = quiz_response.json()
+    selected_option_id = quiz["options"][0]["id"]
+
+    profile_before_response = authenticated_client.get(
+        f"{BASE_URL}/api/gamification/profile",
+        params={"lang": "ru"},
+        timeout=20,
+    )
+    assert profile_before_response.status_code == 200
+    profile_before = profile_before_response.json()
+
+    first_answer_response = authenticated_client.post(
+        f"{BASE_URL}/api/gamification/crest-quiz/answer",
+        json={
+            "quizId": quiz["quizId"],
+            "selectedOptionId": selected_option_id,
+            "language": "ru",
+        },
+        timeout=30,
+    )
+    assert first_answer_response.status_code == 200
+    first_answer = first_answer_response.json()
+
+    assert first_answer["quizId"] == quiz["quizId"]
+    assert first_answer["selectedOptionId"] == selected_option_id
+    assert isinstance(first_answer.get("correctOptionId"), str) and first_answer["correctOptionId"]
+    assert isinstance(first_answer.get("isCorrect"), bool)
+    assert isinstance(first_answer.get("pointsAwarded"), int)
+    assert first_answer["alreadyAnswered"] is False
+    assert isinstance(first_answer.get("profile"), dict)
+    assert isinstance(first_answer.get("badges"), list)
+
+    profile_after_first = first_answer["profile"]
+    assert profile_after_first["quizzesPlayed"] == profile_before["quizzesPlayed"] + 1
+
+    duplicate_answer_response = authenticated_client.post(
+        f"{BASE_URL}/api/gamification/crest-quiz/answer",
+        json={
+            "quizId": quiz["quizId"],
+            "selectedOptionId": selected_option_id,
+            "language": "ru",
+        },
+        timeout=30,
+    )
+    assert duplicate_answer_response.status_code == 200
+    duplicate_answer = duplicate_answer_response.json()
+
+    assert duplicate_answer["quizId"] == quiz["quizId"]
+    assert duplicate_answer["selectedOptionId"] == selected_option_id
+    assert isinstance(duplicate_answer.get("correctOptionId"), str) and duplicate_answer["correctOptionId"]
+    assert duplicate_answer["alreadyAnswered"] is True
+    assert duplicate_answer["pointsAwarded"] == 0
+    assert isinstance(duplicate_answer.get("profile"), dict)
+
+    profile_after_duplicate = duplicate_answer["profile"]
+    assert profile_after_duplicate["quizzesPlayed"] == profile_after_first["quizzesPlayed"]
+
+
+def test_profile_aggregates_attempts_across_player_and_crest_quizzes(api_client):
+    session = requests.Session()
+    session.headers.update({"Content-Type": "application/json"})
+
+    email = f"test_gamification_aggregate_{uuid.uuid4().hex[:10]}@example.com"
+    register_payload = {
+        "name": "TEST Gamification Aggregate",
+        "email": email,
+        "password": "admin123",
+    }
+    register_response = session.post(f"{BASE_URL}/api/auth/register", json=register_payload, timeout=20)
+    assert register_response.status_code == 200
+
+    profile_before_response = session.get(f"{BASE_URL}/api/gamification/profile", params={"lang": "ru"}, timeout=20)
+    assert profile_before_response.status_code == 200
+    profile_before = profile_before_response.json()
+
+    player_quiz_response = session.get(f"{BASE_URL}/api/gamification/daily-quiz", params={"lang": "ru"}, timeout=30)
+    assert player_quiz_response.status_code == 200
+    player_quiz = player_quiz_response.json()
+
+    crest_quiz_response = session.get(f"{BASE_URL}/api/gamification/crest-quiz", params={"lang": "ru"}, timeout=30)
+    assert crest_quiz_response.status_code == 200
+    crest_quiz = crest_quiz_response.json()
+
+    player_answer_response = session.post(
+        f"{BASE_URL}/api/gamification/daily-quiz/answer",
+        json={
+            "quizId": player_quiz["quizId"],
+            "selectedOptionId": player_quiz["options"][0]["id"],
+            "language": "ru",
+        },
+        timeout=30,
+    )
+    assert player_answer_response.status_code == 200
+
+    crest_answer_response = session.post(
+        f"{BASE_URL}/api/gamification/crest-quiz/answer",
+        json={
+            "quizId": crest_quiz["quizId"],
+            "selectedOptionId": crest_quiz["options"][0]["id"],
+            "language": "ru",
+        },
+        timeout=30,
+    )
+    assert crest_answer_response.status_code == 200
+
+    profile_after_response = session.get(f"{BASE_URL}/api/gamification/profile", params={"lang": "ru"}, timeout=20)
+    assert profile_after_response.status_code == 200
+    profile_after = profile_after_response.json()
+
+    assert profile_after["quizzesPlayed"] == profile_before["quizzesPlayed"] + 2
+    assert isinstance(profile_after.get("recentAttempts"), list)
+    attempt_ids = [attempt.get("quizId", "") for attempt in profile_after["recentAttempts"]]
+    assert any(quiz_id.startswith("daily-quiz:") for quiz_id in attempt_ids)
+    assert any(quiz_id.startswith("crest-quiz:") for quiz_id in attempt_ids)
