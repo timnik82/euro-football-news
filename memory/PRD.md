@@ -173,6 +173,14 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - Added EN/RU/PT UI translations for the Games section and navigation labels
 - Added regression tests in `/app/backend/tests/test_gamification_api.py`; verified 4/4 passing plus frontend smoke test
 
+### Phase 21 — Crest Quiz Expansion (done — May 2026)
+- Added a second daily quiz mode on `/games`: “Guess the Crest” / «Угадай эмблему»
+- Added backend endpoints `/api/gamification/crest-quiz` and `/api/gamification/crest-quiz/answer`
+- Crest quiz uses football-data.org league standings/team crests when available, with safe fallback club data if standings are unavailable
+- The public crest quiz response hides `correctOptionId`; correctness is revealed only after authenticated answer submission
+- Scoreboard/profile now aggregates attempts across player quiz and crest quiz
+- Added EN/RU/PT labels for the crest quiz and updated regression coverage; verified 7/7 gamification tests passing
+
 ## Key Technical Details
 - Frontend: React, TailwindCSS, Shadcn UI, PWA Service Worker
 - Backend: FastAPI, PyJWT (cookie auth), HTTPX
@@ -200,7 +208,7 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 ### P1 — Upcoming
 - Push notifications for favorite team match alerts
 - Optional language-switch UI automation for `Story of the Match`
-- Expand gamification with more quiz modes, e.g. “Guess the club crest” and match-score prediction
+- Expand gamification with match-score prediction and weekly challenge summaries
 
 ### P2 — Future
 - "Did you know?" fun facts (stadium, founded year)
@@ -216,4 +224,5 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - Apr 2026 Premier League status: official PL match-report content source works and provides exact sources/images for tested PL matches.
 - May 2026 dark mode status: app now follows device/browser system theme automatically using `prefers-color-scheme`; there is intentionally no manual theme toggle yet.
 - May 2026 gamification status: `/games` is live for logged-in users, daily quiz progress persists in MongoDB, and duplicate daily attempts do not award extra points.
+- May 2026 crest quiz status: `/games` now includes both player and club-emblem daily quizzes; both persist to the same scoreboard/achievements profile.
 - Response in Russian (user preference)
