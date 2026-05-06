@@ -1,0 +1,54 @@
+{
+  "summary": "Ran independent backend/frontend regression after backend modular refactor. Core API routing, auth cookies, favorites, football, stories, and gamification flows are working; found two auth hardening regressions.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "/api/auth/login (OPTIONS preflight)",
+        "issue": "CORS preflight from public endpoint returns access-control-allow-origin='*' and no access-control-allow-credentials. Expected explicit origin with credentials for cookie auth.",
+        "priority": "CRITICAL"
+      },
+      {
+        "endpoint": "/api/auth/login",
+        "issue": "No brute-force lockout after 5 failed login attempts; valid credentials still succeed immediately (200).",
+        "priority": "HIGH"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_refactor_regression_api.py",
+    "/app/backend/tests/test_gamification_api.py",
+    "/app/backend/tests/test_match_story_api.py",
+    "/app/test_reports/pytest/pytest_refactor_regression_results.xml",
+    "/app/test_reports/pytest/pytest_existing_regression_results.xml"
+  ],
+  "action_items": [
+    "Implement and enforce login lockout/rate-limit policy after repeated failed auth attempts (>=5).",
+    "Fix deployed CORS policy for /api auth routes to return explicit allow-origin and allow-credentials=true for configured frontend origin.",
+    "Re-run /app/backend/tests/test_refactor_regression_api.py after auth hardening fixes."
+  ],
+  "critical_code_review_comments": [
+    "Deployed CORS behavior does not match server.py expectation (explicit FRONTEND_URL + credentials). Likely ingress/edge override or env mismatch.",
+    "Auth router has no failed-attempt tracking/temporary lock mechanism, so brute-force lockout requirement is not implemented.",
+    "seed_admin password update path exists in code (auth_service.seed_admin) but was not mutation-tested in this run.",
+    "Admin password hash in Mongo verified as bcrypt $2b$ prefix (playbook check passed)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_refactor_regression_api.py",
+    "/app/test_reports/iteration_5.json"
+  ],
+  "success_rate": {
+    "backend": "91%",
+    "frontend": "100%"
+  },
+  "seed_data_creation": "Created isolated auth test users via /api/auth/register: test_refactor_<random>@example.com and pytest-generated users from existing suites.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Public URL used from frontend/.env. New regression test file covers requested refactor scope. Current failing tests: CORS credentials/origin preflight and brute-force lockout. Existing gamification + match story suites still pass 13/13.",
+  "rca of the issue": "Reproduction: (1) OPTIONS /api/auth/login with Origin header returns wildcard CORS and missing allow-credentials at public endpoint, indicating proxy/edge CORS policy override or deployment config mismatch vs backend code. (2) Send 5 invalid admin login attempts, then valid admin credentials; response remains 200, confirming no lockout control in auth flow. Mitigation: enforce centralized auth rate-limiting/lockout (IP+account), return 423/429 with retry-after, and align ingress CORS with explicit trusted origins + credentials."
+}
