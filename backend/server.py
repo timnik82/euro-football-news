@@ -16,6 +16,10 @@ from routers.gamification import router as gamification_router
 
 app = FastAPI()
 
+
+def configured_cors_origins() -> list[str]:
+    return [origin.strip() for origin in os.environ["CORS_ORIGINS"].split(",") if origin.strip()]
+
 app.include_router(auth_router, prefix="/api")
 app.include_router(football_router, prefix="/api")
 app.include_router(gamification_router, prefix="/api")
@@ -23,7 +27,7 @@ app.include_router(favorites_router, prefix="/api")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.environ["FRONTEND_URL"]],
+    allow_origins=configured_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -38,6 +42,8 @@ async def startup():
     await db.favorites.create_index([("user_id", 1), ("type", 1), ("item_id", 1)], unique=True)
     await db.match_stories.create_index([("matchId", 1), ("language", 1)], unique=True)
     await db.quiz_attempts.create_index([("user_id", 1), ("quizId", 1)], unique=True)
+    await db.login_attempts.create_index("identifier", unique=True)
+    await db.login_attempts.create_index("locked_until")
     await seed_admin()
     write_test_credentials_file()
 

@@ -2,7 +2,7 @@ import jwt
 from bson import ObjectId
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Request, Response
-from auth_service import create_access_token, get_current_user, get_jwt_secret, hash_password, set_auth_cookies, verify_password
+from auth_service import clear_failed_logins, create_access_token, enforce_login_lockout, get_current_user, get_jwt_secret, hash_password, record_failed_login, set_auth_cookies, verify_password
 from config import JWT_ALGORITHM
 from database import db
 from schemas import LoginInput, RegisterInput
@@ -23,12 +23,15 @@ async def register(data: RegisterInput, response: Response):
 
 
 @router.post("/login")
-async def login(data: LoginInput, response: Response):
+async def login(data: LoginInput, request: Request, response: Response):
     email = data.email.lower().strip()
+    await enforce_login_lockout(email)
     user = await db.users.find_one({"email": email})
     if not user or not verify_password(data.password, user["password_hash"]):
+        await record_failed_login(email)
         raise HTTPException(401, "Invalid email or password")
     user_id = str(user["_id"])
+    await clear_failed_logins(email)
     set_auth_cookies(response, user_id, email)
     return {"_id": user_id, "name": user["name"], "email": email, "role": user.get("role", "user")}
 

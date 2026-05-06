@@ -7,6 +7,9 @@ from fastapi import HTTPException, Request, Response
 from config import JWT_ALGORITHM, logger
 from database import db
 
+MAX_FAILED_LOGIN_ATTEMPTS = 5
+LOGIN_LOCKOUT_MINUTES = 15
+
 
 def get_jwt_secret() -> str:
     return os.environ["JWT_SECRET"]
@@ -59,6 +62,39 @@ def set_auth_cookies(response: Response, user_id: str, email: str):
     refresh = create_refresh_token(user_id)
     response.set_cookie("access_token", access, httponly=True, secure=False, samesite="lax", max_age=3600, path="/")
     response.set_cookie("refresh_token", refresh, httponly=True, secure=False, samesite="lax", max_age=604800, path="/")
+
+
+def login_attempt_identifier(email: str) -> str:
+    return email.lower().strip()
+
+
+async def enforce_login_lockout(email: str):
+    attempt = await db.login_attempts.find_one({"identifier": login_attempt_identifier(email)}, {"_id": 0})
+    if not attempt:
+        return
+    locked_until = attempt.get("locked_until")
+    if locked_until and locked_until.tzinfo is None:
+        locked_until = locked_until.replace(tzinfo=timezone.utc)
+    if locked_until and locked_until > datetime.now(timezone.utc):
+        raise HTTPException(429, "Too many failed login attempts. Please try again later.")
+
+
+async def record_failed_login(email: str):
+    identifier = login_attempt_identifier(email)
+    existing = await db.login_attempts.find_one({"identifier": identifier}, {"_id": 0})
+    failed_count = int((existing or {}).get("failed_count", 0)) + 1
+    update = {
+        "identifier": identifier,
+        "failed_count": failed_count,
+        "last_failed_at": datetime.now(timezone.utc),
+    }
+    if failed_count >= MAX_FAILED_LOGIN_ATTEMPTS:
+        update["locked_until"] = datetime.now(timezone.utc) + timedelta(minutes=LOGIN_LOCKOUT_MINUTES)
+    await db.login_attempts.update_one({"identifier": identifier}, {"$set": update}, upsert=True)
+
+
+async def clear_failed_logins(email: str):
+    await db.login_attempts.delete_one({"identifier": login_attempt_identifier(email)})
 
 
 async def seed_admin():
