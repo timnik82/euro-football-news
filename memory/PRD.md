@@ -23,7 +23,10 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 ```
 /app/
 ├── backend/
-│   ├── server.py (FastAPI, API proxy, MongoDB caching, Auth)
+│   ├── server.py (FastAPI app assembly, CORS, startup indexes)
+│   ├── config.py, database.py, schemas.py
+│   ├── auth_service.py, football_service.py, match_story_service.py, gamification_service.py
+│   ├── routers/ (auth.py, football.py, gamification.py, favorites.py)
 │   ├── requirements.txt
 │   └── .env
 ├── frontend/
@@ -181,9 +184,15 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - Scoreboard/profile now aggregates attempts across player quiz and crest quiz
 - Added EN/RU/PT labels for the crest quiz and updated regression coverage; verified 7/7 gamification tests passing
 
+### Phase 22 — Backend Modular Refactor & Auth Hardening (done — May 2026)
+- Split monolithic backend `server.py` into focused config/database/schema, service, and router modules while preserving all `/api` routes
+- Added `login_attempts` persistence and lockout after 5 failed login attempts to harden custom JWT auth
+- Added `/app/auth_testing.md` and regression coverage in `/app/backend/tests/test_refactor_regression_api.py`
+- Verified backend regression: refactor suite 8/8 passing excluding platform-level ingress CORS check; existing gamification + match-story suites 13/13 passing
+
 ## Key Technical Details
 - Frontend: React, TailwindCSS, Shadcn UI, PWA Service Worker
-- Backend: FastAPI, PyJWT (cookie auth), HTTPX
+- Backend: FastAPI, PyJWT (cookie auth), HTTPX, modular routers/services
 - Database: MongoDB (caching + user favorites)
 - API: football-data.org (free tier, 10 req/min, 5-30min cache)
 - News providers: official PL content source, RSS feeds, GNews, NewsData.io, NewsAPI.org (backend-only config/keys, normalized article format, graceful fallback)
@@ -192,6 +201,8 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - `users`: {email, hashed_password, favorites: {leagues: [], teams: []}}
 - `football_cache`: {url, response_data, timestamp}
 - `match_stories`: {matchId, language, title, summary, keyPoints, whyItMatters, isFallback, imageUrl, sources, videoUrl, generatedAt}
+- `quiz_attempts`: {user_id, quizId, selectedOptionId, correctOptionId, isCorrect, pointsAwarded, answeredAt}
+- `login_attempts`: {identifier, failed_count, last_failed_at, locked_until}
 
 ## Key API Endpoints
 - `/api/auth/login`, `/api/auth/register`, `/api/auth/me`
@@ -202,6 +213,7 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - `/api/matches/{match_id}/story?lang=en|ru|pt` (cached child-friendly story for exact match)
 - `/api/teams/{team_id}`, `/api/players/{player_id}`
 - `/api/favorites`
+- `/api/gamification/daily-quiz`, `/api/gamification/crest-quiz`, `/api/gamification/profile`
 
 ## Backlog
 
@@ -225,4 +237,6 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - May 2026 dark mode status: app now follows device/browser system theme automatically using `prefers-color-scheme`; there is intentionally no manual theme toggle yet.
 - May 2026 gamification status: `/games` is live for logged-in users, daily quiz progress persists in MongoDB, and duplicate daily attempts do not award extra points.
 - May 2026 crest quiz status: `/games` now includes both player and club-emblem daily quizzes; both persist to the same scoreboard/achievements profile.
+- May 2026 backend refactor status: `server.py` is now a 48-line assembly file; domain logic lives in services and routers. Auth lockout is active after 5 failed login attempts.
+- May 2026 CORS note: local FastAPI CORS returns explicit origin + credentials correctly; public preview OPTIONS preflight is intercepted by platform ingress and still returns wildcard CORS. Same-origin frontend flows continue to work, but cross-origin credentialed preflight requires ingress configuration outside app code.
 - Response in Russian (user preference)
