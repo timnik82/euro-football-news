@@ -1,0 +1,48 @@
+{
+  "summary": "Провёл backend+frontend регрессию после второго этапа backend refactor: агрегирующий football router, split доменных роутов и split match story модулей работают; ключевые API и smoke UI Leagues проходят.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "/api/auth/login (OPTIONS preflight на public preview)",
+        "issue": "Preflight возвращает access-control-allow-origin='*' вместо явного origin. Это воспроизводится на публичном ingress и уже отмечено как платформенный edge-слой, не app-code регрессия (same-origin frontend flow работает)."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_refactor_regression_api.py",
+    "/app/backend/tests/test_gamification_api.py",
+    "/app/backend/tests/test_match_story_api.py",
+    "/app/backend/tests/test_auth_seed_admin.py",
+    "/app/test_reports/pytest/pytest_refactor_regression_results_iter6.xml",
+    "/app/test_reports/pytest/pytest_existing_regression_results_iter6.xml",
+    "/app/test_reports/pytest/pytest_seed_admin_results_iter6.xml"
+  ],
+  "action_items": [
+    "Если нужно убрать noise в CI: пометить preflight wildcard на public ingress как known platform issue, либо тестировать CORS credential check на internal backend endpoint.",
+    "(Опционально) Добавить отдельный pytest для /api/search в regression suite вместо ad-hoc curl проверки."
+  ],
+  "critical_code_review_comments": [
+    "Роутинг совместимости сохранён: /api/leagues, /api/leagues/{code}/standings, /api/matches/today, /api/matches/{id}, /api/stories, /api/matches/{id}/story, /api/search.",
+    "auth_service реализует lockout (>=5 fail), bcrypt hashing ($2b$), clear_failed_logins и seed_admin password update path; это подтверждено runtime-тестами.",
+    "routers/football.py корректно агрегирует leagues/teams/matches/stories/search, без сломанной префиксации после split."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_auth_seed_admin.py",
+    "/app/test_reports/iteration_6.json"
+  ],
+  "success_rate": {
+    "backend": "96%",
+    "frontend": "100%"
+  },
+  "seed_data_creation": "Созданы временные тестовые пользователи через /api/auth/register в regression тестах; в test_auth_seed_admin временно изменялся admin hash и восстанавливался через seed_admin().",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Прогнаны 23 теста: 22 passed, 1 failed (known ingress OPTIONS wildcard). Проверены auth login/me/favorites, gamification daily+crest+profile+duplicate, stories/match detail/lang variants/cache, и отдельный seed_admin update check. Smoke UI: homepage и переход в Leagues по data-testid nav-leagues успешны.",
+  "rca of the issue": "RCA для единственного фейла: OPTIONS preflight на публичном preview обслуживается ingress/edge слоем, который отдает wildcard CORS header; это не коррелирует с backend CORSMiddleware (explicit origin+credentials) и не ломает same-origin браузерный сценарий приложения."
+}

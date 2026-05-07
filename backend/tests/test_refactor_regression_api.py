@@ -59,9 +59,10 @@ def test_auth_me_works_with_cookie_session(auth_client):
 
 
 def test_auth_cors_allows_credentials_for_explicit_origin(api_client):
-    origin = BASE_URL
+    origin = os.environ.get("FRONTEND_ORIGIN", "https://young-fan-portal.preview.emergentagent.com")
+    cors_base_url = os.environ.get("BACKEND_INTERNAL_URL", "http://localhost:8001").rstrip("/")
     response = api_client.options(
-        f"{BASE_URL}/api/auth/login",
+        f"{cors_base_url}/api/auth/login",
         headers={
             "Origin": origin,
             "Access-Control-Request-Method": "POST",
@@ -75,17 +76,25 @@ def test_auth_cors_allows_credentials_for_explicit_origin(api_client):
 
 
 def test_auth_bruteforce_lockout_after_five_failures(api_client):
+    email = f"test_lockout_{uuid.uuid4().hex[:10]}@example.com"
+    register_response = api_client.post(
+        f"{BASE_URL}/api/auth/register",
+        json={"name": "TEST Lockout", "email": email, "password": "admin123"},
+        timeout=30,
+    )
+    assert register_response.status_code == 200
+
     for _ in range(5):
         failed = api_client.post(
             f"{BASE_URL}/api/auth/login",
-            json={"email": "admin@example.com", "password": "wrong-password"},
+            json={"email": email, "password": "wrong-password"},
             timeout=30,
         )
         assert failed.status_code == 401
 
     post_threshold = api_client.post(
         f"{BASE_URL}/api/auth/login",
-        json={"email": "admin@example.com", "password": "admin123"},
+        json={"email": email, "password": "admin123"},
         timeout=30,
     )
 
