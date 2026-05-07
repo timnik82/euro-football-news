@@ -125,6 +125,14 @@ def test_football_leagues_and_today_match_routes(api_client):
     assert isinstance(today, list)
 
 
+def test_search_endpoint_returns_structured_results(api_client):
+    response = api_client.get(f"{BASE_URL}/api/search", params={"q": "ar"}, timeout=45)
+    assert response.status_code == 200
+    payload = response.json()
+    assert isinstance(payload.get("teams"), list)
+    assert isinstance(payload.get("players"), list)
+
+
 @pytest.fixture(scope="session")
 def sample_match_id(api_client):
     stories_response = api_client.get(f"{BASE_URL}/api/stories", timeout=45)

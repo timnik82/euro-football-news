@@ -25,8 +25,9 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 ├── backend/
 │   ├── server.py (FastAPI app assembly, CORS, startup indexes)
 │   ├── config.py, database.py, schemas.py
-│   ├── auth_service.py, football_service.py, match_story_service.py, gamification_service.py
-│   ├── routers/ (auth.py, football.py, gamification.py, favorites.py)
+│   ├── auth_service.py, football_service.py, gamification_service.py
+│   ├── match_story_utils.py, match_story_sources.py, match_story_builder.py, match_story_service.py
+│   ├── routers/ (auth.py, football.py aggregate, leagues.py, teams.py, matches.py, stories.py, search.py, gamification.py, favorites.py)
 │   ├── requirements.txt
 │   └── .env
 ├── frontend/
@@ -190,9 +191,15 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - Added `/app/auth_testing.md` and regression coverage in `/app/backend/tests/test_refactor_regression_api.py`
 - Verified backend regression: refactor suite 8/8 passing excluding platform-level ingress CORS check; existing gamification + match-story suites 13/13 passing
 
+### Phase 23 — Backend Refactor Stage 2: Domain Router & Story Module Split (done — May 2026)
+- Split the football aggregate router into focused domain routers: leagues, teams/players, matches, stories, and search
+- Split match-story internals into utilities, external source fetchers, and child-friendly story builder; kept `match_story_service.py` as a compatibility facade
+- Added regression coverage for `/api/search` and admin seed password repair (`test_auth_seed_admin.py`)
+- Verified final backend regression: 24/24 tests passing locally against the running FastAPI backend; frontend smoke confirms Home → Leagues flow renders
+
 ## Key Technical Details
 - Frontend: React, TailwindCSS, Shadcn UI, PWA Service Worker
-- Backend: FastAPI, PyJWT (cookie auth), HTTPX, modular routers/services
+- Backend: FastAPI, PyJWT (cookie auth), HTTPX, modular routers/services, split match-story provider/builder modules
 - Database: MongoDB (caching + user favorites)
 - API: football-data.org (free tier, 10 req/min, 5-30min cache)
 - News providers: official PL content source, RSS feeds, GNews, NewsData.io, NewsAPI.org (backend-only config/keys, normalized article format, graceful fallback)
@@ -212,6 +219,7 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - `/api/matches/{match_id}` (with H2H)
 - `/api/matches/{match_id}/story?lang=en|ru|pt` (cached child-friendly story for exact match)
 - `/api/teams/{team_id}`, `/api/players/{player_id}`
+- `/api/search?q={query}`
 - `/api/favorites`
 - `/api/gamification/daily-quiz`, `/api/gamification/crest-quiz`, `/api/gamification/profile`
 
@@ -227,7 +235,7 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - Penalty stats in top scorers list
 
 ## Known Issues / Notes
-- Route ordering in server.py is critical: `/matches/today` MUST precede `/matches/{match_id}`
+- Route ordering in `routers/matches.py` is critical: `/matches/today` MUST precede `/matches/{match_id}`
 - Homepage Match Stories headlines are generated programmatically; match-detail stories can use news providers or fallback to match data
 - football-data.org free tier: 10 req/min limit, backend caches responses
 - Match-specific stories use external news providers when a relevant article is found; fallback stories are generated from match data and saved in MongoDB
@@ -237,6 +245,7 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - May 2026 dark mode status: app now follows device/browser system theme automatically using `prefers-color-scheme`; there is intentionally no manual theme toggle yet.
 - May 2026 gamification status: `/games` is live for logged-in users, daily quiz progress persists in MongoDB, and duplicate daily attempts do not award extra points.
 - May 2026 crest quiz status: `/games` now includes both player and club-emblem daily quizzes; both persist to the same scoreboard/achievements profile.
-- May 2026 backend refactor status: `server.py` is now a 48-line assembly file; domain logic lives in services and routers. Auth lockout is active after 5 failed login attempts.
+- May 2026 backend refactor status: `server.py` is now a small assembly file; domain logic lives in services and routers. Auth lockout is active after 5 failed login attempts.
+- May 2026 refactor stage 2 status: football routes and match-story logic are now split into smaller focused modules; `routers/football.py` remains as an aggregate compatibility router.
 - May 2026 CORS note: local FastAPI CORS returns explicit origin + credentials correctly; public preview OPTIONS preflight is intercepted by platform ingress and still returns wildcard CORS. Same-origin frontend flows continue to work, but cross-origin credentialed preflight requires ingress configuration outside app code.
 - Response in Russian (user preference)
