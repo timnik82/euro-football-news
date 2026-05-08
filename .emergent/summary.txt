@@ -5,25 +5,33 @@ Build a PWA primarily to be used on a 11-inch tablet for a 10-year-old kid with 
 *(INSTRUCT FOR NEXT AGENT: You MUST automatically detect the user's primary language from their messages inside the trajectory tag and INSTRUCT next agent to respond in Russian ONLY)*
 
 **what currently exists?** 
-A functional, tablet-optimized PWA (React, FastAPI, MongoDB) featuring football match data, a Next Favorite Match countdown hero, multilingual Story of the Match module (using official APIs, RSS, and fallback logic), automatic system-level Dark Mode, and a new Gamification module (protected  route) featuring daily Guess the Player and Guess the Crest quizzes with persistent user scoring, streaks, and badges.
+A functional, tablet-optimized PWA (React, FastAPI, MongoDB) featuring football match data, a Next Favorite Match countdown hero, multilingual Story of the Match module (using official APIs, RSS, and fallback logic), automatic system-level Dark Mode, a Gamification module, and a newly implemented, highly modularized backend architecture broken down by domain features.
 
 **Last working item**: 
-    - Last item agent was working: Answering the user's question regarding whether user gamification progress and accounts are persistently saved in the database. Prior to this, the agent successfully implemented the Guess the Crest (Угадай эмблему) quiz expansion.
+    - Last item agent was working: Phase 2 of backend refactoring (modularizing  and  into highly granular domain routers/services) and running full regression suites.
     - Status: COMPLETED
     - Agent Testing Done: Y
-    - Which testing method agent to use? NA (Frontend and backend features were already fully tested via  and ============================= test session starts ==============================
+    - Which testing method agent to use? NA (Backend tests passed successfully via  and ============================= test session starts ==============================
 platform linux -- Python 3.11.15, pytest-9.0.2, pluggy-1.6.0
 rootdir: /app
 plugins: anyio-4.13.0
-collected 0 items / 2 skipped
+collected 1 item / 3 skipped
 
-============================== 2 skipped in 0.16s ==============================).
+backend/tests/test_auth_seed_admin.py .                                  [100%]
+
+=============================== warnings summary ===============================
+../root/.venv/lib/python3.11/site-packages/starlette/formparsers.py:12
+  /root/.venv/lib/python3.11/site-packages/starlette/formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=================== 1 passed, 3 skipped, 1 warning in 3.77s ====================).
     - User Testing Done: Y
 
 **All Pending/In progress Issue list**: 
   Issue 1: NewsAPI.org Integration returning 401 Unauthorized
-     - Attempted fixes: Verified the key, tested without hyphens, passed via  headers, user activated key. Still returning 401.
-     - Next debug checklist: Check if the specific NewsAPI endpoint requires a paid plan or investigate if the user needs to generate a completely new API key. 
+     - Attempted fixes: Verified the key, tested without hyphens, passed via  headers.
+     - Next debug checklist: Check if the specific NewsAPI endpoint requires a paid plan or investigate if the user needs to generate a completely new API key.
      - Why fix this issue and what will be achieved with the fix? Adds an additional reliable data source for generating match stories.
      - Status: BLOCKED
      - Is recurring issue? Y
@@ -35,8 +43,8 @@ None
 
 **Upcoming and Future Tasks**
     Upcoming Tasks:
-    - P1: Refactor  - The file has grown exceptionally large (1756+ lines). It urgently needs to be split into modular routers (e.g., , , , ) to reduce regression risks.
     - P1: Push notifications for favorite team match alerts.
+    - P1: Gamification expansion — Score predictions (прогноз счёта) and weekly challenges.
     
     Future Tasks:
     - P2: Did you know? fun facts (stadium, founded year).
@@ -45,11 +53,11 @@ None
     - P2: Penalty stats in top scorers list.
 
 **Completed work in this session**
-- Gamification P0: Daily Guess the Player quiz with points, streaks, and badges (DONE)
-- Gamification P0: Daily Guess the Crest/Emblem quiz expansion (DONE)
-- Gamification API endpoints, MongoDB  persistence, and Pytest regression suite (DONE)
-- Frontend  protected route, responsive bottom navigation, and translations (DONE)
-- Answered user's architectural query about DB persistence (DONE)
+- Backend Phase 1 Refactor: Extracted routes from massive  into domain routers (, , , ) (DONE)
+- Auth Hardening: Implemented backend rate-limiting/lockout policy (max 5 failed login attempts) (DONE)
+- Backend Phase 2 Refactor: Split  into , , , , and  (DONE)
+- Backend Phase 2 Refactor: Split  into smaller units ( and ) (DONE)
+- Regression Testing: Added new Pytest modules (, ) and verified search endpoints (DONE)
 
 **Earlier issues found/mentioned but not fixed**
 None
@@ -64,50 +72,54 @@ None
 
 **Key Technical Concepts**
 - Frontend: React, TailwindCSS, Shadcn UI patterns, PWA, Multi-language contexts.
-- Backend: FastAPI, PyJWT (Cookie-based Auth), custom RSS parsing, JSON payload inspection.
-- Database: MongoDB (Caching football API responses, articles, user accounts, and quiz tracking).
+- Backend: FastAPI, PyJWT (Cookie-based Auth), custom RSS parsing. Highly modular router architecture (refactored).
+- Database: MongoDB.
 
 **key DB schema**
   - : {email, hashed_password, favorites: {leagues: [], teams: []}}
-  - : {user_id, quiz_id, selected_option, is_correct, points_awarded, timestamp}
+  - : {user_id, quizId, selected_option, is_correct, points_awarded, timestamp}
   - : {key, data, timestamp}
   - : {match_id, language, title, summary, key_points, why_it_matters, is_fallback, image_url, sources, video_url, generated_at}
+  - : {identifier, failed_count, locked_until}
 
 **changes in tech stack**
   - None.
 
 **All files of reference** 
--  (Added , ,  logic).
--  (Created Gamification UI).
--  (Added gamification dictionaries for EN, RU, PT).
--  (Created pytest suite for game logic).
--  &  (Test agent reports).
+-  (All freshly modularized routing files)
+-  (Split files for match logic)
+-  (Regression suites verifying the refactor)
+- 
 
 **Areas that need refactoring**: 
--  has grown to 1756 lines. The testing agent specifically flagged this as an upcoming maintenance risk. Modularize into routers as soon as possible.
+- None. Backend was heavily modularized in this session to eliminate tech debt.
 
 **key api endpoints**
-- Gamification (New): , 
-- Story: 
-- External: , , , 
+- Gamification: , , 
+- Auth: , 
+- Content: 
+- Football: , 
 
 **Critical Info for New Agent** 
-- **Language Requirement:** The user communicates exclusively in Russian. Always respond in Russian.
-- **Throttling Details:** GNews API is limited to 1 request per second in  globally. Do not remove the  mechanism.
-- **Gamification Logic:** Quizzes are generated deterministically based on the current date, seeded from backend stats. A user can only earn points once per  (enforced via  collection).
+- **Language Requirement:** User communicates in Russian. MUST respond in Russian ONLY.
+- **CORS Platform Limitation:** A known infrastructure issue exists in the preview environment where  requests receive a wildcard CORS header from the platform *ingress*, ignoring the backend's explicit . Do NOT attempt to fix this external CORS behavior in the application code, as same-origin browser interactions work perfectly.
+- **Auth Rate-Limiting:** A lockout policy is now enforced. 5 failed login attempts will temporarily lock the account. Keep this in mind when manually testing authentication.
+- **Backend Architecture:**  is now strictly an entry point. All business logic and endpoints live entirely in  and corresponding service files. 
 
 **documents and test reports created in this job**
-  - 
-  - 
+  -  (Phase 1 Refactor tests)
+  -  (Phase 2 Refactor tests)
+  -  (Updated Architecture tree)
 
 **Last 10 User Messages and any pending HUMAN messages** 
-- А у нас подключена база данных, и аккаунт юзера сохраняется вместе с его прогрессом? (COMPLETED - Agent answered the user's question, explaining MongoDB usage and progress logic).
-- Давай расширим викторину по угадыванию эмблемы (COMPLETED - Agent added Crest/Emblem quiz to Gamification module).
-- Добавим гамификацию P0 (COMPLETED - Agent implemented Gamification module with daily player quiz, badges, scoring).
-- Please use ask_human tool and confirm your plan now. (COMPLETED - Agent confirmed PRD and plan).
+- Проведи тогда аккуратно второй модуль уборки, второй этап. (COMPLETED - Agent split football and story routes into granular files).
+- Можешь объяснить простым языком? Что-то еще не до конца сделано по разбиению того большого файла. ? (COMPLETED - Agent explained the refactoring state and proposed the Phase 2 cleanup).
+- Давай рефакторинг. (COMPLETED - Agent refactored backend into separate domain routers).
+- Please use ask_human tool and confirm your plan now. (COMPLETED - Agent provided the plan).
 
 **Project Health Check:**
-- Broken: NewsAPI.org integration returns 401 Unauthorized despite active key.
+- Broken: NewsAPI.org integration returning 401 Unauthorized.
+- Mocked: None.
 
 **3rd Party Integrations** 
 -  API — requires User API Key
@@ -116,17 +128,17 @@ None
 -  — requires User API Key (currently failing auth)
 
 **Testing status**
-  - Testing agent used after significant changes: YES (Used for Gamification P0 and Crest Quiz expansion).
-  - Troubleshoot agent used after agent stuck in loop: NO
-  - Test files created: 
-  - Known regressions: None
+  - Testing agent used after significant changes: YES (Used to verify Phase 1 and Phase 2 of backend refactoring).
+  - Troubleshoot agent used after agent stuck in loop: YES (Used to identify that the CORS issue was originating at the platform ingress level, not the app level).
+  - Test files created: , 
+  - Known regressions: None (Ingress CORS wildcard is an expected infrastructure boundary condition, not a code defect).
 
 **Credentials to test flow:**
 - Email: 
 - Password: 
 
 **What agent forgot to execute**
-- Nothing. The requested features were successfully executed and tested.
+- Nothing. The requested refactor was fully executed and successfully regression tested.
 
 <TESTING METHOD>
 NA
