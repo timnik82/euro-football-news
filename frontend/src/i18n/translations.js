@@ -95,6 +95,20 @@ const translations = {
     team: {
       founded: "Founded", colors: "Colors", coach: "Coach", squad: "Squad", players: "players",
       yrs: "yrs", notFound: "Team not found",
+      didYouKnow: {
+        title: "Did you know?",
+        founded: "{team} was founded in {year} — that is {age} years of football history!",
+        venue: "Home matches are played at {venue}, the club's football home.",
+        competition: "This season the team is playing in {competition}.",
+        coach: "The coach is {coach}, the person planning training and tactics.",
+        squad: "The squad has {count} players, so there are lots of lineup choices.",
+        colors: "The club colours are {colors}; fans can spot them from far away.",
+        fallbacks: [
+          "Every crest tells a little story about {team}, its city, or its fans.",
+          "Players usually train many times a week before match day.",
+          "A loud home crowd can make a match feel extra exciting.",
+        ],
+      },
       pos: { goalkeeper: "Goalkeepers", defence: "Defenders", midfield: "Midfielders", offence: "Forwards" },
     },
     player: {
@@ -315,6 +329,20 @@ const translations = {
     team: {
       founded: "Основан", colors: "Цвета", coach: "Тренер", squad: "Состав", players: "игроков",
       yrs: "лет", notFound: "Команда не найдена",
+      didYouKnow: {
+        title: "А ты знал?",
+        founded: "{team} основан в {year} году — это уже {age} лет футбольной истории!",
+        venue: "Домашние матчи проходят на стадионе {venue} — это футбольный дом клуба.",
+        competition: "В этом сезоне команда играет в турнире {competition}.",
+        coach: "Главный тренер — {coach}; он помогает выбирать тактику и план тренировок.",
+        squad: "В составе {count} игроков — можно собрать много разных вариантов команды.",
+        colors: "Цвета клуба: {colors}; болельщики узнают их издалека.",
+        fallbacks: [
+          "Каждая эмблема рассказывает маленькую историю о {team}, городе или болельщиках.",
+          "Футболисты обычно тренируются много раз в неделю перед матчем.",
+          "Громкая поддержка дома может сделать матч ещё более захватывающим.",
+        ],
+      },
       pos: { goalkeeper: "Вратари", defence: "Защитники", midfield: "Полузащитники", offence: "Нападающие" },
     },
     player: {
@@ -535,6 +563,20 @@ const translations = {
     team: {
       founded: "Fundado", colors: "Cores", coach: "Treinador", squad: "Plantel", players: "jogadores",
       yrs: "anos", notFound: "Equipa nao encontrada",
+      didYouKnow: {
+        title: "Sabias que?",
+        founded: "{team} foi fundado em {year} — ja sao {age} anos de historia no futebol!",
+        venue: "Os jogos em casa sao no {venue}, a casa futebolistica do clube.",
+        competition: "Nesta epoca a equipa joga em {competition}.",
+        coach: "O treinador e {coach}, quem prepara treinos e taticas.",
+        squad: "O plantel tem {count} jogadores, por isso ha muitas escolhas para o onze.",
+        colors: "As cores do clube sao {colors}; os adeptos reconhecem-nas de longe.",
+        fallbacks: [
+          "Cada emblema conta uma pequena historia sobre {team}, a cidade ou os adeptos.",
+          "Os jogadores costumam treinar muitas vezes por semana antes do dia do jogo.",
+          "Uma bancada cheia em casa pode tornar o jogo ainda mais emocionante.",
+        ],
+      },
       pos: { goalkeeper: "Guarda-redes", defence: "Defesas", midfield: "Medios", offence: "Avancados" },
     },
     player: {

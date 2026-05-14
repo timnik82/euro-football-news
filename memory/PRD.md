@@ -197,6 +197,12 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - Added regression coverage for `/api/search` and admin seed password repair (`test_auth_seed_admin.py`)
 - Verified final backend regression: 24/24 tests passing locally against the running FastAPI backend; frontend smoke confirms Home → Leagues flow renders
 
+### Phase 24 — Team “Did You Know?” Fun Facts (done — May 2026)
+- Added a reusable `TeamFunFacts` component to team profile pages
+- Shows 3 short child-friendly facts from existing team data: founded year, stadium, competition, coach, squad size, colors, with safe fallback facts when data is missing
+- Added EN/RU/PT translations and data-testid coverage for the facts block
+- Verified with frontend lint plus Playwright smoke tests on `/team/57` in English and Russian
+
 ## Key Technical Details
 - Frontend: React, TailwindCSS, Shadcn UI, PWA Service Worker
 - Backend: FastAPI, PyJWT (cookie auth), HTTPX, modular routers/services, split match-story provider/builder modules
@@ -231,7 +237,6 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - Expand gamification with match-score prediction and weekly challenge summaries
 
 ### P2 — Future
-- "Did you know?" fun facts (stadium, founded year)
 - Penalty stats in top scorers list
 
 ## Known Issues / Notes
@@ -247,5 +252,6 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - May 2026 crest quiz status: `/games` now includes both player and club-emblem daily quizzes; both persist to the same scoreboard/achievements profile.
 - May 2026 backend refactor status: `server.py` is now a small assembly file; domain logic lives in services and routers. Auth lockout is active after 5 failed login attempts.
 - May 2026 refactor stage 2 status: football routes and match-story logic are now split into smaller focused modules; `routers/football.py` remains as an aggregate compatibility router.
+- May 2026 team fun facts status: team pages now include localized “Did you know?” facts using existing team profile data; no new external API dependency was added.
 - May 2026 CORS note: local FastAPI CORS returns explicit origin + credentials correctly; public preview OPTIONS preflight is intercepted by platform ingress and still returns wildcard CORS. Same-origin frontend flows continue to work, but cross-origin credentialed preflight requires ingress configuration outside app code.
 - Response in Russian (user preference)

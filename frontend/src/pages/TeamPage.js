@@ -4,6 +4,7 @@ import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { BrandHeading } from "@/components/BrandHeading";
+import { TeamFunFacts } from "@/components/TeamFunFacts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { ArrowLeft, Heart, MapPin, Calendar, Palette, Globe, User, Shield, Users } from "lucide-react";
@@ -163,6 +164,8 @@ export default function TeamPage() {
           <div className="text-xs text-slate-400 font-semibold">{t("team.players")}</div>
         </div>
       </div>
+
+      <TeamFunFacts team={team} t={t} />
 
       {/* Squad */}
       <div className="animate-slide-up" style={{ animationDelay: "0.15s" }}>
