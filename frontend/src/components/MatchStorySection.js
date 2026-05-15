@@ -89,15 +89,6 @@ export default function MatchStorySection({ story, loading, error }) {
             </ul>
           )}
 
-          <div className="rounded-2xl bg-white/80 border border-sky-100 p-3" data-testid="match-story-why-card">
-            <div className="text-xs font-black uppercase text-sky-500 mb-1" data-testid="match-story-why-label">
-              {t("matchStory.why")}
-            </div>
-            <p className="text-sm font-semibold text-slate-600 leading-relaxed" data-testid="match-story-why-text">
-              {story.whyItMatters}
-            </p>
-          </div>
-
           {story.videoUrl && (
             <a
               href={story.videoUrl}

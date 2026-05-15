@@ -126,7 +126,7 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - Story flow checks MongoDB `match_stories` cache first, then searches configured news providers, normalizes article responses, scores match relevance, and saves the final processed story
 - Integrated GNews, NewsData.io, and NewsAPI.org provider adapters via backend-only environment variables
 - Added child-friendly fallback story generation from exact match data when no relevant external article is available
-- Added `MatchStorySection` inside `MatchDetailModal` with loading, fallback, image, source links, optional video link, key points, and "Why it matters"
+- Added `MatchStorySection` inside `MatchDetailModal` with loading, fallback, image, source links, optional video link, and key points
 - Added EN/RU/PT UI translations under `matchStory.*`
 - Added backend regression tests in `/app/backend/tests/test_match_story_api.py`
 
@@ -203,6 +203,11 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - Added EN/RU/PT translations and data-testid coverage for the facts block
 - Verified with frontend lint plus Playwright smoke tests on `/team/57` in English and Russian
 
+### Phase 25 — Match Story UI Simplification (done — May 2026)
+- Removed the visible “Why it matters” card from match-detail story sections
+- Kept story title, summary, key points, images, source links, fallback badges, and optional highlight links intact
+- Verified with frontend lint and Playwright smoke test opening the first homepage story modal; `match-story-why-card` is no longer rendered
+
 ## Key Technical Details
 - Frontend: React, TailwindCSS, Shadcn UI, PWA Service Worker
 - Backend: FastAPI, PyJWT (cookie auth), HTTPX, modular routers/services, split match-story provider/builder modules
@@ -253,5 +258,6 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - May 2026 backend refactor status: `server.py` is now a small assembly file; domain logic lives in services and routers. Auth lockout is active after 5 failed login attempts.
 - May 2026 refactor stage 2 status: football routes and match-story logic are now split into smaller focused modules; `routers/football.py` remains as an aggregate compatibility router.
 - May 2026 team fun facts status: team pages now include localized “Did you know?” facts using existing team profile data; no new external API dependency was added.
+- May 2026 match story UI status: the “Why it matters” block is no longer shown in story modals; existing story API compatibility is preserved.
 - May 2026 CORS note: local FastAPI CORS returns explicit origin + credentials correctly; public preview OPTIONS preflight is intercepted by platform ingress and still returns wildcard CORS. Same-origin frontend flows continue to work, but cross-origin credentialed preflight requires ingress configuration outside app code.
 - Response in Russian (user preference)
