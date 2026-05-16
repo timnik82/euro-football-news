@@ -208,6 +208,13 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - Kept story title, summary, key points, images, source links, fallback badges, and optional highlight links intact
 - Verified with frontend lint and Playwright smoke test opening the first homepage story modal; `match-story-why-card` is no longer rendered
 
+### Phase 26 — Factual-Only Story Copy (done — May 2026)
+- Reworked homepage story headlines to use factual scorelines instead of generic narrative phrases
+- Reworked match-detail story summaries/key points to contain only score, teams, competition, half-time score, and sources
+- Removed visible fallback explanatory note from story modals to save space
+- Bumped match-story cache version to regenerate old cached narrative copy
+- Verified with Python/JS lint, direct `/api/matches/{id}/story?refresh=true` check, Playwright story-modal smoke test, and match-story regression tests 6/6 passing
+
 ## Key Technical Details
 - Frontend: React, TailwindCSS, Shadcn UI, PWA Service Worker
 - Backend: FastAPI, PyJWT (cookie auth), HTTPX, modular routers/services, split match-story provider/builder modules
@@ -259,5 +266,6 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - May 2026 refactor stage 2 status: football routes and match-story logic are now split into smaller focused modules; `routers/football.py` remains as an aggregate compatibility router.
 - May 2026 team fun facts status: team pages now include localized “Did you know?” facts using existing team profile data; no new external API dependency was added.
 - May 2026 match story UI status: the “Why it matters” block is no longer shown in story modals; existing story API compatibility is preserved.
+- May 2026 story copy status: story cards and modals now avoid generic narrative text and prioritize factual score/competition/source information.
 - May 2026 CORS note: local FastAPI CORS returns explicit origin + credentials correctly; public preview OPTIONS preflight is intercepted by platform ingress and still returns wildcard CORS. Same-origin frontend flows continue to work, but cross-origin credentialed preflight requires ingress configuration outside app code.
 - Response in Russian (user preference)

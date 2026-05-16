@@ -13,7 +13,7 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 FOOTBALL_API_KEY = os.environ["FOOTBALL_API_KEY"]
 FOOTBALL_API_BASE = "https://api.football-data.org/v4"
 COMPETITIONS = "PL,CL,PD,SA,BL1,FL1,PPL"
-MATCH_STORY_CACHE_VERSION = "match-story-official-content-v2"
+MATCH_STORY_CACHE_VERSION = "match-story-factual-v3"
 JWT_ALGORITHM = "HS256"
 
 LEAGUES = {

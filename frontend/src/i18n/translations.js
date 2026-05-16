@@ -727,74 +727,32 @@ export function getTranslation(lang, key) {
 }
 
 export function localizeStory(story, lang) {
-  const t = (key) => getTranslation(lang, `story.${key}`);
   const home = story.home_team?.name || "Home";
   const away = story.away_team?.name || "Away";
+  const competition = story.competition?.name || "";
   const h = story.score?.home;
   const a = story.score?.away;
   if (h == null || a == null) return story;
 
-  const total = h + a;
-  const diff = Math.abs(h - a);
   const winner = h > a ? home : away;
-  const loser = h > a ? away : home;
-  const cleanSheet = h === 0 || a === 0;
-  const seedSource = `${story.match_id || ""}-${home}-${away}`;
-  const seed = [...seedSource].reduce((acc, char) => acc + char.charCodeAt(0), 0);
-
-  const pick = (key, offset = 0) => {
-    const value = t(key);
-    if (Array.isArray(value)) {
-      return value[(seed + offset) % value.length];
-    }
-    return value;
+  const scoreLine = `${home} ${h}–${a} ${away}`;
+  const competitionSuffix = competition ? ` · ${competition}` : "";
+  const summaryByLang = {
+    ru: h === a
+      ? `Ничья: ${scoreLine}${competitionSuffix}.`
+      : `Победитель: ${winner}. Счёт: ${scoreLine}${competitionSuffix}.`,
+    pt: h === a
+      ? `Empate: ${scoreLine}${competitionSuffix}.`
+      : `Vencedor: ${winner}. Resultado: ${scoreLine}${competitionSuffix}.`,
+    en: h === a
+      ? `Draw: ${scoreLine}${competitionSuffix}.`
+      : `Winner: ${winner}. Score: ${scoreLine}${competitionSuffix}.`,
   };
-
-  let headlineKey;
-  let summaryKey;
-
-  if (h === a) {
-    if (total === 0) {
-      headlineKey = "drawNoGoals";
-      summaryKey = "summaryDrawNoGoals";
-    } else if (total >= 4) {
-      headlineKey = "drawWild";
-      summaryKey = "summaryDrawWild";
-    } else {
-      headlineKey = "drawEven";
-      summaryKey = "summaryDrawEven";
-    }
-  } else {
-    const prefix = h > a ? "home" : "away";
-
-    if (diff >= 3) {
-      headlineKey = `${prefix}Dominant`;
-      summaryKey = cleanSheet
-        ? "summaryDominantCleanSheet"
-        : total >= 5
-          ? "summaryDominantHighScoring"
-          : "summaryDominant";
-    } else if (diff === 2) {
-      headlineKey = cleanSheet ? `${prefix}ControlClean` : `${prefix}Control`;
-      summaryKey = cleanSheet ? "summaryControlCleanSheet" : "summaryControl";
-    } else {
-      headlineKey = cleanSheet ? `${prefix}NarrowClean` : `${prefix}Narrow`;
-      summaryKey = cleanSheet ? "summaryNarrowCleanSheet" : "summaryNarrow";
-    }
-  }
-
-  const fill = (template) => template
-    .replaceAll("{home}", home)
-    .replaceAll("{away}", away)
-    .replaceAll("{winner}", winner)
-    .replaceAll("{loser}", loser)
-    .replaceAll("{h}", h)
-    .replaceAll("{a}", a);
 
   return {
     ...story,
-    headline: fill(pick(headlineKey)),
-    summary: fill(pick(summaryKey, 1)),
+    headline: scoreLine,
+    summary: summaryByLang[lang] || summaryByLang.en,
   };
 }
 

@@ -65,11 +65,6 @@ export default function MatchStorySection({ story, loading, error }) {
                 </span>
               )}
             </div>
-            {story.isFallback && (
-              <p className="text-xs font-semibold text-orange-600 mb-2" data-testid="match-story-fallback-note">
-                {t("matchStory.fallback")}
-              </p>
-            )}
             <h3 className="text-lg font-black text-slate-900 leading-tight" data-testid="match-story-headline">
               {story.title}
             </h3>
