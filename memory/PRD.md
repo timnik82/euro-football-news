@@ -215,6 +215,14 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - Bumped match-story cache version to regenerate old cached narrative copy
 - Verified with Python/JS lint, direct `/api/matches/{id}/story?refresh=true` check, Playwright story-modal smoke test, and match-story regression tests 6/6 passing
 
+### Phase 27 — Admin Story Source Diagnostics (done — May 2026)
+- Added protected admin route `/admin/stories` for viewing story-provider diagnostics per recent finished match
+- Added backend admin APIs: `GET /api/admin/story-diagnostics` and `POST /api/admin/story-diagnostics/{match_id}/refresh`
+- Story generation now stores provider diagnostics in MongoDB, including source status, HTTP status, query count, candidate articles, matched articles, and failure messages
+- Diagnostics cover official PL content, RSS feeds, NewsAPI.org, NewsData.io, and GNews while keeping public `/api/matches/{match_id}/story` responses clean and factual-only
+- Added admin-only homepage shortcut and EN/RU/PT translations for the diagnostics panel
+- Verified with curl, Playwright smoke test, Python/JS lint, backend regression tests 21/21 passing, and testing-agent validation
+
 ## Key Technical Details
 - Frontend: React, TailwindCSS, Shadcn UI, PWA Service Worker
 - Backend: FastAPI, PyJWT (cookie auth), HTTPX, modular routers/services, split match-story provider/builder modules
@@ -236,6 +244,8 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - `/api/leagues/{code}/season` (new — season progress)
 - `/api/matches/{match_id}` (with H2H)
 - `/api/matches/{match_id}/story?lang=en|ru|pt` (cached child-friendly story for exact match)
+- `/api/admin/story-diagnostics?lang=en|ru|pt&limit=10` (admin-only recent match story source diagnostics)
+- `/api/admin/story-diagnostics/{match_id}/refresh?lang=en|ru|pt` (admin-only provider recheck + diagnostic cache update)
 - `/api/teams/{team_id}`, `/api/players/{player_id}`
 - `/api/search?q={query}`
 - `/api/favorites`
@@ -250,6 +260,7 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 
 ### P2 — Future
 - Penalty stats in top scorers list
+- Add more official league sources to story diagnostics/provider list
 
 ## Known Issues / Notes
 - Route ordering in `routers/matches.py` is critical: `/matches/today` MUST precede `/matches/{match_id}`
@@ -267,5 +278,6 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - May 2026 team fun facts status: team pages now include localized “Did you know?” facts using existing team profile data; no new external API dependency was added.
 - May 2026 match story UI status: the “Why it matters” block is no longer shown in story modals; existing story API compatibility is preserved.
 - May 2026 story copy status: story cards and modals now avoid generic narrative text and prioritize factual score/competition/source information.
+- May 2026 admin diagnostics status: `/admin/stories` is available for admin users and shows provider-level success/failure per recent match; public story responses do not expose diagnostics.
 - May 2026 CORS note: local FastAPI CORS returns explicit origin + credentials correctly; public preview OPTIONS preflight is intercepted by platform ingress and still returns wildcard CORS. Same-origin frontend flows continue to work, but cross-origin credentialed preflight requires ingress configuration outside app code.
 - Response in Russian (user preference)
