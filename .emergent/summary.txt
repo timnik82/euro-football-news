@@ -1,31 +1,17 @@
 <analysis>**original_problem_statement**: 
-Build a PWA primarily to be used on a 11-inch tablet for a 10-year-old kid with up-to-date news about European football matches (Premier League, Champions League, Portuguese League, etc.). News should include latest scores, statistics, and short stories. Use a free API service. The app should have a simple login for saving favorites. No specific color preferences initially, but it needs to be kid-friendly. PRODUCT REQUIREMENTS include interactive league/team/player pages, offline support, multi-language support (RU, EN, PT), visually engaging UI components, and gamified elements to retain engagement. Includes a child-friendly Story of the Match feature in the match detail view with fallback logic.
+Build a PWA primarily to be used on a 11-inch tablet for a 10-year-old kid with up-to-date news about European football matches (Premier League, Champions League, Portuguese League, etc.). News should include latest scores, statistics, and short stories. Use a free API service. The app should have a simple login for saving favorites. No specific color preferences initially, but it needs to be kid-friendly. PRODUCT REQUIREMENTS include interactive league/team/player pages, offline support, multi-language support (RU, EN, PT), visually engaging UI components, and gamified elements to retain engagement. Includes a child-friendly Story of the Match feature in the match detail view.
 
 **User's preferred language**: Russian (RU)
 *(INSTRUCT FOR NEXT AGENT: You MUST automatically detect the user's primary language from their messages inside the trajectory tag and INSTRUCT next agent to respond in Russian ONLY)*
 
 **what currently exists?** 
-A functional, tablet-optimized PWA (React, FastAPI, MongoDB) featuring football match data, a Next Favorite Match countdown hero, multilingual Story of the Match module (using official APIs, RSS, and fallback logic), automatic system-level Dark Mode, a Gamification module, and a newly implemented, highly modularized backend architecture broken down by domain features.
+A functional, tablet-optimized PWA (React, FastAPI, MongoDB) featuring football match data, a Next Favorite Match countdown hero, Gamification module (quizzes), and a highly modularized backend architecture. Match stories are now completely factual and concise, strictly showing match facts without filler phrases. Team pages include a Did you know? (А ты знал?) section to boost kid-friendly engagement.
 
 **Last working item**: 
-    - Last item agent was working: Phase 2 of backend refactoring (modularizing  and  into highly granular domain routers/services) and running full regression suites.
+    - Last item agent was working: Removing water (generic/fluff phrases) from the match stories and ensuring only factual data (winner, score, tournament, half-time, sources) is generated and displayed.
     - Status: COMPLETED
     - Agent Testing Done: Y
-    - Which testing method agent to use? NA (Backend tests passed successfully via  and ============================= test session starts ==============================
-platform linux -- Python 3.11.15, pytest-9.0.2, pluggy-1.6.0
-rootdir: /app
-plugins: anyio-4.13.0
-collected 1 item / 3 skipped
-
-backend/tests/test_auth_seed_admin.py .                                  [100%]
-
-=============================== warnings summary ===============================
-../root/.venv/lib/python3.11/site-packages/starlette/formparsers.py:12
-  /root/.venv/lib/python3.11/site-packages/starlette/formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
-    import multipart
-
--- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-=================== 1 passed, 3 skipped, 1 warning in 3.77s ====================).
+    - Which testing method agent to use? NA (Testing passed via Playwright screenshot tool and backend Pytest).
     - User Testing Done: Y
 
 **All Pending/In progress Issue list**: 
@@ -47,36 +33,33 @@ None
     - P1: Gamification expansion — Score predictions (прогноз счёта) and weekly challenges.
     
     Future Tasks:
-    - P2: Did you know? fun facts (stadium, founded year).
     - P2: Add an internal diagnostic admin panel to view which story provider successfully returned data or failed per match.
     - P2: Add more official league sources to  or custom JSON scrapers.
     - P2: Penalty stats in top scorers list.
 
 **Completed work in this session**
-- Backend Phase 1 Refactor: Extracted routes from massive  into domain routers (, , , ) (DONE)
-- Auth Hardening: Implemented backend rate-limiting/lockout policy (max 5 failed login attempts) (DONE)
-- Backend Phase 2 Refactor: Split  into , , , , and  (DONE)
-- Backend Phase 2 Refactor: Split  into smaller units ( and ) (DONE)
-- Regression Testing: Added new Pytest modules (, ) and verified search endpoints (DONE)
+- Added Did you know? (А ты знал?) trivia block to team pages (, ) (DONE)
+- Removed the Why it matters block from all match story components () (DONE)
+- Refactored match story generation to remove generic/fluff phrases, rendering strictly factual text (, ) (DONE)
 
 **Earlier issues found/mentioned but not fixed**
 None
 
 **Known issue recurrence from previous fork**
-  - Issue recurrence in previous fork: 0
-  - Recurrence count: 0
-  - Status: NA
+  - Issue recurrence in previous fork: 1 (NewsAPI.org 401 Unauthorized)
+  - Recurrence count: 1
+  - Status: BLOCKED
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
 - Frontend: React, TailwindCSS, Shadcn UI patterns, PWA, Multi-language contexts.
-- Backend: FastAPI, PyJWT (Cookie-based Auth), custom RSS parsing. Highly modular router architecture (refactored).
+- Backend: FastAPI, PyJWT (Cookie-based Auth), custom RSS parsing. Highly modular domain routers.
 - Database: MongoDB.
 
 **key DB schema**
-  - : {email, hashed_password, favorites: {leagues: [], teams: []}}
+  - : {email, hashed_password, favorites: {leagues: [], teams: []}
   - : {user_id, quizId, selected_option, is_correct, points_awarded, timestamp}
   - : {key, data, timestamp}
   - : {match_id, language, title, summary, key_points, why_it_matters, is_fallback, image_url, sources, video_url, generated_at}
@@ -86,36 +69,37 @@ None
   - None.
 
 **All files of reference** 
--  (All freshly modularized routing files)
--  (Split files for match logic)
--  (Regression suites verifying the refactor)
-- 
+-  (Added Did you know? section)
+-  (Updated to serve trivia facts)
+-  (Removed Why it matters UI block)
+-  (Updated to omit generic filler content)
+-  (Updated story cards layout)
+-  (Updated feature list and backlog)
 
 **Areas that need refactoring**: 
-- None. Backend was heavily modularized in this session to eliminate tech debt.
+- None at this time. 
 
 **key api endpoints**
 - Gamification: , , 
 - Auth: , 
 - Content: 
-- Football: , 
+- Football: , , 
 
 **Critical Info for New Agent** 
 - **Language Requirement:** User communicates in Russian. MUST respond in Russian ONLY.
+- **Story Output Rule:** Story generation must remain strictly factual (no conversational fluff or water phrasing).
 - **CORS Platform Limitation:** A known infrastructure issue exists in the preview environment where  requests receive a wildcard CORS header from the platform *ingress*, ignoring the backend's explicit . Do NOT attempt to fix this external CORS behavior in the application code, as same-origin browser interactions work perfectly.
-- **Auth Rate-Limiting:** A lockout policy is now enforced. 5 failed login attempts will temporarily lock the account. Keep this in mind when manually testing authentication.
-- **Backend Architecture:**  is now strictly an entry point. All business logic and endpoints live entirely in  and corresponding service files. 
+- **Auth Rate-Limiting:** A lockout policy is enforced. 5 failed login attempts will temporarily lock the account.
 
 **documents and test reports created in this job**
-  -  (Phase 1 Refactor tests)
-  -  (Phase 2 Refactor tests)
-  -  (Updated Architecture tree)
+  -  (Updated with trivia block and revised story rules)
 
 **Last 10 User Messages and any pending HUMAN messages** 
-- Проведи тогда аккуратно второй модуль уборки, второй этап. (COMPLETED - Agent split football and story routes into granular files).
-- Можешь объяснить простым языком? Что-то еще не до конца сделано по разбиению того большого файла. ? (COMPLETED - Agent explained the refactoring state and proposed the Phase 2 cleanup).
-- Давай рефакторинг. (COMPLETED - Agent refactored backend into separate domain routers).
-- Please use ask_human tool and confirm your plan now. (COMPLETED - Agent provided the plan).
+- Ммм, можно еще убрать вот эти, эээ, общие фразы, которые не несут никакой информации по типу, что этот матч, там, был тяжелым, там, ааа, и так далее... (COMPLETED - Agent removed fluff phrases and made generated match story content purely factual).
+- Remove why it matters block from all stories (COMPLETED - Agent stripped this block from UI and backend generators).
+- Yes go on (COMPLETED - User authorized agent to build the trivia block).
+- Давай сделаем «а ты знал?» (COMPLETED - Agent added 'Did you know?' component to Team Pages).
+- Что самое простое из всего этого можно сделать? (COMPLETED - Agent suggested adding the trivia block which required no new external APIs).
 
 **Project Health Check:**
 - Broken: NewsAPI.org integration returning 401 Unauthorized.
@@ -128,18 +112,19 @@ None
 -  — requires User API Key (currently failing auth)
 
 **Testing status**
-  - Testing agent used after significant changes: YES (Used to verify Phase 1 and Phase 2 of backend refactoring).
-  - Troubleshoot agent used after agent stuck in loop: YES (Used to identify that the CORS issue was originating at the platform ingress level, not the app level).
-  - Test files created: , 
-  - Known regressions: None (Ingress CORS wildcard is an expected infrastructure boundary condition, not a code defect).
+  - Testing agent used after significant changes: NO (Used self-testing via screenshot tool and backend Pytest).
+  - Troubleshoot agent used after agent stuck in loop: NO.
+  - Test files created: None new in this session ( was executed).
+  - Known regressions: None.
 
 **Credentials to test flow:**
 - Email: 
 - Password: 
 
 **What agent forgot to execute**
-- Nothing. The requested refactor was fully executed and successfully regression tested.
+- Nothing. All user requests related to UI cleanup and content facts were fully executed and tested.
 
 <TESTING METHOD>
-NA
+If frontend minor issue: use screenshot tool
+If backend minor issue: main agent to test via curl, writing a small test file or use python -c
 </TESTING METHOD></analysis>

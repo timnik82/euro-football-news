@@ -59,7 +59,7 @@ def test_auth_me_works_with_cookie_session(auth_client):
 
 
 def test_auth_cors_allows_credentials_for_explicit_origin(api_client):
-    origin = os.environ.get("FRONTEND_ORIGIN", "https://young-fan-hub.preview.emergentagent.com")
+    origin = os.environ.get("FRONTEND_ORIGIN", "https://goal-gazette-5.preview.emergentagent.com")
     cors_base_url = os.environ.get("BACKEND_INTERNAL_URL", "http://localhost:8001").rstrip("/")
     response = api_client.options(
         f"{cors_base_url}/api/auth/login",
