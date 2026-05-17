@@ -10,7 +10,7 @@ import { BrandHeading } from "@/components/BrandHeading";
 import SettingsGear from "@/components/SettingsGear";
 import NextFavoriteMatchHero from "@/components/NextFavoriteMatchHero";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Zap, Newspaper, ChevronRight, Calendar } from "lucide-react";
+import { Zap, Newspaper, ChevronRight, Calendar, ShieldCheck } from "lucide-react";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -85,7 +85,20 @@ export default function HomePage() {
             {formattedDate}
           </p>
         </div>
-        <SettingsGear />
+        <div className="flex items-center gap-2">
+          {user?.role === "admin" && (
+            <button
+              data-testid="home-admin-diagnostics-link"
+              type="button"
+              aria-label={t("admin.title")}
+              onClick={() => navigate("/admin/stories")}
+              className="h-12 w-12 rounded-full bg-slate-900 text-white flex items-center justify-center shadow-lg hover:bg-slate-700 transition-colors"
+            >
+              <ShieldCheck size={22} strokeWidth={2.8} />
+            </button>
+          )}
+          <SettingsGear />
+        </div>
       </div>
 
       {loading ? (

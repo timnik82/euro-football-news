@@ -18,6 +18,43 @@ from match_story_utils import (
 GNEWS_RATE_LIMIT_LOCK = asyncio.Lock()
 GNEWS_RATE_LIMIT_STATE = {"last_request_at": 0.0}
 
+PROVIDER_LABELS = {
+    "official_content": "Official content",
+    "rss": "RSS feed",
+    "newsapi": "NewsAPI.org",
+    "newsdata": "NewsData.io",
+    "gnews": "GNews",
+}
+
+def add_provider_diagnostic(
+    diagnostics: Optional[list[dict]],
+    provider: str,
+    status: str,
+    source_name: Optional[str] = None,
+    message: str = "",
+    http_status: Optional[int] = None,
+    query_count: int = 0,
+    candidate_count: int = 0,
+    matched_count: int = 0,
+    error: Optional[str] = None,
+):
+    if diagnostics is None:
+        return
+    entry = {
+        "provider": provider,
+        "sourceName": source_name or PROVIDER_LABELS.get(provider, provider),
+        "status": status,
+        "message": message,
+        "queryCount": query_count,
+        "candidateCount": candidate_count,
+        "matchedCount": matched_count,
+    }
+    if http_status is not None:
+        entry["httpStatus"] = http_status
+    if error:
+        entry["error"] = error[:240]
+    diagnostics.append(entry)
+
 async def wait_for_gnews_slot():
     async with GNEWS_RATE_LIMIT_LOCK:
         elapsed = time.monotonic() - GNEWS_RATE_LIMIT_STATE["last_request_at"]
@@ -92,9 +129,10 @@ def parse_rss_articles(xml_text: str, feed_name: str) -> list[dict]:
             articles.append(normalized)
     return articles
 
-async def fetch_rss_articles_for_match(match: dict) -> list[dict]:
+async def fetch_rss_articles_for_match(match: dict, diagnostics: Optional[list[dict]] = None) -> list[dict]:
     feeds = configured_rss_feeds()
     if not feeds:
+        add_provider_diagnostic(diagnostics, "rss", "skipped", message="No RSS feeds configured")
         return []
     articles = []
     seen_urls = set()
@@ -104,8 +142,18 @@ async def fetch_rss_articles_for_match(match: dict) -> list[dict]:
                 resp = await http.get(feed["url"])
                 if resp.status_code != 200:
                     logger.info(f"RSS feed {feed['name']} returned {resp.status_code}")
+                    add_provider_diagnostic(
+                        diagnostics,
+                        "rss",
+                        "failed",
+                        source_name=feed["name"],
+                        message="Feed request returned a non-200 status",
+                        http_status=resp.status_code,
+                    )
                     continue
-                for article in parse_rss_articles(resp.text, feed["name"]):
+                parsed_articles = parse_rss_articles(resp.text, feed["name"])
+                matched_count = 0
+                for article in parsed_articles:
                     if article["url"] in seen_urls:
                         continue
                     relevance = article_relevance_score(article, match)
@@ -113,8 +161,27 @@ async def fetch_rss_articles_for_match(match: dict) -> list[dict]:
                         article["relevanceScore"] = relevance + 2
                         articles.append(article)
                         seen_urls.add(article["url"])
+                        matched_count += 1
+                add_provider_diagnostic(
+                    diagnostics,
+                    "rss",
+                    "matched" if matched_count else "no_match",
+                    source_name=feed["name"],
+                    message="RSS feed checked for exact match reports",
+                    http_status=resp.status_code,
+                    candidate_count=len(parsed_articles),
+                    matched_count=matched_count,
+                )
             except Exception as e:
                 logger.info(f"RSS feed {feed['name']} failed: {e}")
+                add_provider_diagnostic(
+                    diagnostics,
+                    "rss",
+                    "failed",
+                    source_name=feed.get("name"),
+                    message="Feed request or parsing failed",
+                    error=str(e),
+                )
     articles.sort(key=lambda a: (a.get("relevanceScore", 0), 1 if a.get("imageUrl") else 0, a.get("publishedAt") or ""), reverse=True)
     for article in articles:
         article.pop("relevanceScore", None)
@@ -153,9 +220,10 @@ def parse_official_content_articles(payload: dict, source_name: str) -> list[dic
             articles.append(normalized)
     return articles
 
-async def fetch_official_content_articles_for_match(match: dict) -> list[dict]:
+async def fetch_official_content_articles_for_match(match: dict, diagnostics: Optional[list[dict]] = None) -> list[dict]:
     sources = configured_content_sources()
     if not sources:
+        add_provider_diagnostic(diagnostics, "official_content", "skipped", message="No official content sources configured")
         return []
     articles = []
     seen_urls = set()
@@ -170,8 +238,18 @@ async def fetch_official_content_articles_for_match(match: dict) -> list[dict]:
                 resp = await http.get(source["url"])
                 if resp.status_code != 200:
                     logger.info(f"Official content source {source['name']} returned {resp.status_code}")
+                    add_provider_diagnostic(
+                        diagnostics,
+                        "official_content",
+                        "failed",
+                        source_name=source["name"],
+                        message="Official source returned a non-200 status",
+                        http_status=resp.status_code,
+                    )
                     continue
-                for article in parse_official_content_articles(resp.json(), source["name"]):
+                parsed_articles = parse_official_content_articles(resp.json(), source["name"])
+                matched_count = 0
+                for article in parsed_articles:
                     if article["url"] in seen_urls:
                         continue
                     relevance = article_relevance_score(article, match)
@@ -179,14 +257,33 @@ async def fetch_official_content_articles_for_match(match: dict) -> list[dict]:
                         article["relevanceScore"] = relevance + 4
                         articles.append(article)
                         seen_urls.add(article["url"])
+                        matched_count += 1
+                add_provider_diagnostic(
+                    diagnostics,
+                    "official_content",
+                    "matched" if matched_count else "no_match",
+                    source_name=source["name"],
+                    message="Official source checked for exact match reports",
+                    http_status=resp.status_code,
+                    candidate_count=len(parsed_articles),
+                    matched_count=matched_count,
+                )
             except Exception as e:
                 logger.info(f"Official content source {source['name']} failed: {e}")
+                add_provider_diagnostic(
+                    diagnostics,
+                    "official_content",
+                    "failed",
+                    source_name=source.get("name"),
+                    message="Official source request or parsing failed",
+                    error=str(e),
+                )
     articles.sort(key=lambda a: (a.get("relevanceScore", 0), 1 if a.get("imageUrl") else 0, a.get("publishedAt") or ""), reverse=True)
     for article in articles:
         article.pop("relevanceScore", None)
     return articles[:5]
 
-async def fetch_news_articles_for_match(match: dict, language: str) -> list[dict]:
+async def fetch_news_articles_for_match(match: dict, language: str, diagnostics: Optional[list[dict]] = None) -> list[dict]:
     news_language = "en"
     newsapi_key = os.environ.get("NEWSAPI_KEY")
     provider_configs = [
@@ -216,10 +313,21 @@ async def fetch_news_articles_for_match(match: dict, language: str) -> list[dict
         },
     ]
     queries = build_match_queries(match)
-    articles = await fetch_official_content_articles_for_match(match)
-    rss_articles = await fetch_rss_articles_for_match(match)
+    articles = await fetch_official_content_articles_for_match(match, diagnostics)
+    rss_articles = await fetch_rss_articles_for_match(match, diagnostics)
     articles.extend([article for article in rss_articles if article["url"] not in {item["url"] for item in articles}])
     seen_urls = {article["url"] for article in articles}
+    provider_totals = {
+        provider["name"]: {
+            "attempts": 0,
+            "candidateCount": 0,
+            "matchedCount": 0,
+            "httpStatuses": [],
+            "errors": [],
+            "hasKey": bool(provider["key"]),
+        }
+        for provider in provider_configs
+    }
 
     async with httpx.AsyncClient(timeout=7.0) as http:
         for query_index, query in enumerate(queries):
@@ -228,6 +336,8 @@ async def fetch_news_articles_for_match(match: dict, language: str) -> list[dict
                     continue
                 if provider["name"] == "gnews" and query_index >= 2:
                     continue
+                total = provider_totals[provider["name"]]
+                total["attempts"] += 1
                 try:
                     safe_query = provider_safe_query(query, provider["name"])
                     if provider["name"] == "gnews":
@@ -237,11 +347,14 @@ async def fetch_news_articles_for_match(match: dict, language: str) -> list[dict
                         params=provider["params"](safe_query),
                         headers=provider["headers"](),
                     )
+                    total["httpStatuses"].append(resp.status_code)
                     if resp.status_code != 200:
                         logger.info(f"News provider {provider['name']} returned {resp.status_code}")
                         continue
                     payload = resp.json()
-                    for raw_article in provider["extract"](payload):
+                    raw_articles = provider["extract"](payload)
+                    total["candidateCount"] += len(raw_articles)
+                    for raw_article in raw_articles:
                         normalized = normalize_article_payload(provider["name"], raw_article)
                         if not normalized or normalized["url"] in seen_urls:
                             continue
@@ -250,8 +363,46 @@ async def fetch_news_articles_for_match(match: dict, language: str) -> list[dict
                             normalized["relevanceScore"] = relevance
                             articles.append(normalized)
                             seen_urls.add(normalized["url"])
+                            total["matchedCount"] += 1
                 except Exception as e:
                     logger.info(f"News provider {provider['name']} failed: {e}")
+                    provider_totals[provider["name"]]["errors"].append(str(e))
+
+    for provider in provider_configs:
+        total = provider_totals[provider["name"]]
+        if not total["hasKey"]:
+            add_provider_diagnostic(
+                diagnostics,
+                provider["name"],
+                "skipped",
+                source_name=PROVIDER_LABELS.get(provider["name"]),
+                message="API key is not configured",
+            )
+            continue
+        if total["matchedCount"] > 0:
+            status = "matched"
+            message = "Provider returned at least one exact match report"
+        elif total["errors"] or any(code >= 400 for code in total["httpStatuses"]):
+            status = "failed"
+            message = "Provider request failed or returned an error status"
+        elif total["candidateCount"] > 0:
+            status = "no_match"
+            message = "Provider returned articles, but none matched the exact fixture"
+        else:
+            status = "no_results"
+            message = "Provider returned no usable articles for these queries"
+        add_provider_diagnostic(
+            diagnostics,
+            provider["name"],
+            status,
+            source_name=PROVIDER_LABELS.get(provider["name"]),
+            message=message,
+            http_status=total["httpStatuses"][-1] if total["httpStatuses"] else None,
+            query_count=total["attempts"],
+            candidate_count=total["candidateCount"],
+            matched_count=total["matchedCount"],
+            error="; ".join(total["errors"][:2]) if total["errors"] else None,
+        )
 
     articles.sort(key=lambda a: (a.get("relevanceScore", 0), 1 if a.get("imageUrl") else 0, a.get("publishedAt") or ""), reverse=True)
     for article in articles:

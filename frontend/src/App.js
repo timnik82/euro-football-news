@@ -8,6 +8,7 @@ import HomePage from "@/pages/HomePage";
 import LeagueDetail, { LeaguesList } from "@/pages/LeaguePage";
 import FavoritesPage from "@/pages/FavoritesPage";
 import GamesPage from "@/pages/GamesPage";
+import AdminStoryDiagnosticsPage from "@/pages/AdminStoryDiagnosticsPage";
 import TeamPage from "@/pages/TeamPage";
 import { Toaster } from "@/components/ui/sonner";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
@@ -54,6 +55,7 @@ function AppLayout() {
         <Route path="/league/:code" element={<LeagueDetail />} />
         <Route path="/team/:id" element={<TeamPage />} />
         <Route path="/games" element={user ? <GamesPage /> : <Navigate to="/login" />} />
+        <Route path="/admin/stories" element={user?.role === "admin" ? <AdminStoryDiagnosticsPage /> : user ? <Navigate to="/" /> : <Navigate to="/login" />} />
         <Route path="/favorites" element={user ? <FavoritesPage /> : <Navigate to="/login" />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

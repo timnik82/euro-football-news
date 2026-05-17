@@ -1,0 +1,43 @@
+{
+  "summary": "Провёл целевое backend+frontend тестирование опции D (admin story diagnostics): админ-аутентификация, admin API диагностики/refresh, публичный story API и UI /admin/stories работают по требованиям.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "External provider in diagnostics (NewsAPI.org)",
+        "issue": "В диагностике для некоторых матчей отображается provider failed + HTTP 401 от внешнего NewsAPI. Поток не ломается, статус корректно показывается как ошибка провайдера."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_admin_story_diagnostics_api.py",
+    "/app/test_reports/pytest/pytest_admin_story_diagnostics_results.xml"
+  ],
+  "action_items": [
+    "Опционально: добавить бейдж/подсказку в админке, что 401 NewsAPI — внешняя проблема ключа, а не сбой приложения.",
+    "Можно добавить отдельный frontend e2e smoke в CI для /admin/stories (роль admin vs user)."
+  ],
+  "critical_code_review_comments": [
+    "Критических code-level регрессий по новому admin diagnostics флоу не обнаружено.",
+    "Разграничение доступа реализовано корректно: /api/admin/* требует role=admin, route guard в App.js также блокирует user/anon.",
+    "Публичный /api/matches/{match_id}/story не раскрывает diagnostics (response_model MatchStoryResponse скрывает служебное поле)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_admin_story_diagnostics_api.py",
+    "/app/test_reports/iteration_7.json"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "96%"
+  },
+  "seed_data_creation": "Создан тестовый обычный пользователь через UI registration для проверки блокировки /admin/stories (email с префиксом ui_admin_guard_...).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Новый регрессионный backend-тест: /app/backend/tests/test_admin_story_diagnostics_api.py (5/5 passed). UI проверка подтвердила: admin icon виден только админу, /admin/stories рендерит карточки/провайдеры/status/refresh, non-admin блокируется редиректом на '/'.",
+  "rca of the issue": "Единственное наблюдение — внешняя интеграция NewsAPI иногда отвечает 401. Это не регрессия приложения: backend сохраняет diagnostics и frontend корректно показывает provider status=failed без падения общего флоу."
+}

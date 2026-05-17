@@ -10,6 +10,7 @@ from starlette.middleware.cors import CORSMiddleware
 from auth_service import seed_admin, write_test_credentials_file
 from database import db, mongo_client
 from routers.auth import router as auth_router
+from routers.admin import router as admin_router
 from routers.favorites import router as favorites_router
 from routers.football import router as football_router
 from routers.gamification import router as gamification_router
@@ -21,6 +22,7 @@ def configured_cors_origins() -> list[str]:
     return [origin.strip() for origin in os.environ["CORS_ORIGINS"].split(",") if origin.strip()]
 
 app.include_router(auth_router, prefix="/api")
+app.include_router(admin_router, prefix="/api")
 app.include_router(football_router, prefix="/api")
 app.include_router(gamification_router, prefix="/api")
 app.include_router(favorites_router, prefix="/api")
