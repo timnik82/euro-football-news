@@ -83,6 +83,12 @@ function ProviderRow({ diagnostic, matchId, index, t }) {
   );
 }
 
+function shortSnippet(value) {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  if (text.length <= 160) return text;
+  return `${text.slice(0, 157).trim()}…`;
+}
+
 export default function AdminStoryDiagnosticsPage() {
   const navigate = useNavigate();
   const { t, language, dateLocale } = useLanguage();
@@ -226,6 +232,39 @@ export default function AdminStoryDiagnosticsPage() {
                   <FieldStat label={t("admin.sources")} value={match.sourceCount} testId={`admin-match-source-count-${match.matchId}`} />
                   <FieldStat label={t("admin.updated")} value={generatedAt} testId={`admin-match-generated-${match.matchId}`} />
                 </div>
+
+                {match.sourceSnippets?.length > 0 && (
+                  <div data-testid={`admin-source-snippets-${match.matchId}`} className="rounded-3xl bg-emerald-50/80 border border-emerald-200 p-4 mb-4">
+                    <div className="text-xs font-black uppercase text-emerald-700 mb-3" data-testid={`admin-source-snippets-label-${match.matchId}`}>
+                      {t("admin.sourceSnippets")}
+                    </div>
+                    <div className="space-y-3">
+                      {match.sourceSnippets.map((source, snippetIndex) => (
+                        <a
+                          key={source.url || snippetIndex}
+                          href={source.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          data-testid={`admin-source-snippet-link-${match.matchId}-${snippetIndex}`}
+                          className="block rounded-2xl bg-white/90 border border-emerald-100 p-3 hover:border-emerald-300 transition-colors"
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <span data-testid={`admin-source-snippet-source-${match.matchId}-${snippetIndex}`} className="text-[11px] font-black uppercase text-emerald-700">
+                              {source.sourceName || source.provider || t("admin.sources")}
+                            </span>
+                            <span className="text-[10px] font-black text-slate-400">↗</span>
+                          </div>
+                          <p data-testid={`admin-source-snippet-title-${match.matchId}-${snippetIndex}`} className="text-sm font-black text-slate-800 leading-snug">
+                            {source.title}
+                          </p>
+                          <p data-testid={`admin-source-snippet-description-${match.matchId}-${snippetIndex}`} className="text-xs font-semibold text-slate-600 mt-1 leading-relaxed">
+                            {shortSnippet(source.description)}
+                          </p>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div data-testid={`admin-provider-list-${match.matchId}`} className="rounded-3xl bg-slate-50/70 border border-slate-200 p-4 mb-4">
                   {match.diagnostics?.length ? (

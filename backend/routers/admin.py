@@ -27,8 +27,20 @@ def match_label(match: dict) -> str:
 def build_story_diagnostic_row(match: dict, cached_story: dict | None, language: str) -> dict:
     score = (match.get("score") or {}).get("fullTime") or {}
     diagnostics = []
+    source_snippets = []
     if cached_story:
         diagnostics = cached_story.get("diagnostics") or []
+        source_snippets = [
+            {
+                "title": source.get("title"),
+                "description": source.get("description"),
+                "url": source.get("url"),
+                "sourceName": source.get("sourceName"),
+                "provider": source.get("provider"),
+            }
+            for source in cached_story.get("sources") or []
+            if source.get("description") and source.get("url")
+        ][:3]
         if not diagnostics:
             diagnostics = [{
                 "provider": "cache",
@@ -53,6 +65,7 @@ def build_story_diagnostic_row(match: dict, cached_story: dict | None, language:
         "storyStatus": "not_checked" if not cached_story else "fallback" if cached_story.get("isFallback") else "source_found",
         "generatedAt": cached_story.get("generatedAt") if cached_story else None,
         "sourceCount": len(cached_story.get("sources") or []) if cached_story else 0,
+        "sourceSnippets": source_snippets,
         "diagnostics": diagnostics,
     }
 

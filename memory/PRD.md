@@ -223,6 +223,13 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - Added admin-only homepage shortcut and EN/RU/PT translations for the diagnostics panel
 - Verified with curl, Playwright smoke test, Python/JS lint, backend regression tests 21/21 passing, and testing-agent validation
 
+### Phase 28 — Short Source Snippets for Match Stories (done — May 2026)
+- Added a “Short from sources” / “Коротко из источников” block in match story modals when matched articles provide RSS/API descriptions
+- Added the same source-snippet visibility to `/admin/stories`, so admins can inspect the short article excerpts behind a sourced story
+- Snippets use only short provider-provided descriptions and links, not full article copying; story summaries remain factual-only
+- Admin diagnostics API now returns `sourceSnippets` for cached sourced stories while public story API continues using the existing `sources` payload
+- Verified with curl, Playwright smoke test showing 3 snippet links in admin and story modal, JS/Python lint, and backend regression tests 21/21 passing
+
 ## Key Technical Details
 - Frontend: React, TailwindCSS, Shadcn UI, PWA Service Worker
 - Backend: FastAPI, PyJWT (cookie auth), HTTPX, modular routers/services, split match-story provider/builder modules
@@ -279,5 +286,6 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - May 2026 match story UI status: the “Why it matters” block is no longer shown in story modals; existing story API compatibility is preserved.
 - May 2026 story copy status: story cards and modals now avoid generic narrative text and prioritize factual score/competition/source information.
 - May 2026 admin diagnostics status: `/admin/stories` is available for admin users and shows provider-level success/failure per recent match; public story responses do not expose diagnostics.
+- May 2026 source snippets status: sourced match stories can show short article excerpts from RSS/API descriptions; fallback stories stay score-only.
 - May 2026 CORS note: local FastAPI CORS returns explicit origin + credentials correctly; public preview OPTIONS preflight is intercepted by platform ingress and still returns wildcard CORS. Same-origin frontend flows continue to work, but cross-origin credentialed preflight requires ingress configuration outside app code.
 - Response in Russian (user preference)

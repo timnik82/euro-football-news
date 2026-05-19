@@ -2,8 +2,15 @@ import { BookOpen, ExternalLink, Film, Sparkles } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/contexts/LanguageContext";
 
+function shortSnippet(value) {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  if (text.length <= 180) return text;
+  return `${text.slice(0, 177).trim()}…`;
+}
+
 export default function MatchStorySection({ story, loading, error }) {
   const { t } = useLanguage();
+  const sourceSnippets = (story?.sources || []).filter((source) => source.description && source.url).slice(0, 3);
 
   if (loading) {
     return (
@@ -94,6 +101,39 @@ export default function MatchStorySection({ story, loading, error }) {
             >
               <Film size={16} /> {t("matchStory.watchHighlights")}
             </a>
+          )}
+
+          {sourceSnippets.length > 0 && (
+            <div data-testid="match-story-source-snippets-section" className="rounded-2xl bg-white/80 border border-slate-200 p-3">
+              <div className="text-xs font-black uppercase text-slate-400 mb-3" data-testid="match-story-source-snippets-label">
+                {t("matchStory.sourceSnippets")}
+              </div>
+              <div className="space-y-3">
+                {sourceSnippets.map((source, index) => (
+                  <a
+                    key={source.url || index}
+                    href={source.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block rounded-2xl bg-slate-50 border border-slate-200 p-3 hover:border-sky-300 hover:bg-sky-50 transition-colors"
+                    data-testid={`match-story-source-snippet-link-${index}`}
+                  >
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="text-[11px] font-black uppercase text-orange-500" data-testid={`match-story-source-snippet-source-${index}`}>
+                        {source.sourceName || t("matchStory.source")}
+                      </span>
+                      <ExternalLink size={13} className="text-slate-400 flex-shrink-0" />
+                    </div>
+                    <p className="text-sm font-black text-slate-800 leading-snug" data-testid={`match-story-source-snippet-title-${index}`}>
+                      {source.title}
+                    </p>
+                    <p className="text-xs font-semibold text-slate-600 mt-1 leading-relaxed" data-testid={`match-story-source-snippet-description-${index}`}>
+                      {shortSnippet(source.description)}
+                    </p>
+                  </a>
+                ))}
+              </div>
+            </div>
           )}
 
           {story.sources?.length > 0 && (

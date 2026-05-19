@@ -92,6 +92,7 @@ def test_get_story_diagnostics_admin_shape(admin_client):
     assert first["status"] == "FINISHED"
     assert first["storyStatus"] in {"not_checked", "fallback", "source_found"}
     assert isinstance(first["diagnostics"], list)
+    assert isinstance(first.get("sourceSnippets"), list)
 
 
 def test_refresh_story_diagnostics_and_public_story_safety(admin_client):
@@ -121,6 +122,11 @@ def test_refresh_story_diagnostics_and_public_story_safety(admin_client):
     assert refresh_payload["storyStatus"] in {"fallback", "source_found"}
     assert isinstance(refresh_payload["diagnostics"], list)
     assert len(refresh_payload["diagnostics"]) > 0
+    assert isinstance(refresh_payload.get("sourceSnippets"), list)
+    for snippet in refresh_payload["sourceSnippets"]:
+        assert isinstance(snippet.get("title"), str) and snippet["title"].strip()
+        assert isinstance(snippet.get("description"), str) and snippet["description"].strip()
+        assert isinstance(snippet.get("url"), str) and snippet["url"].startswith("http")
 
     providers = {item.get("provider") for item in refresh_payload["diagnostics"]}
     expected_provider_ids = {"official_content", "rss", "newsapi", "newsdata", "gnews"}
