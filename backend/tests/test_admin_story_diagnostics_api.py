@@ -131,6 +131,8 @@ def test_refresh_story_diagnostics_and_public_story_safety(admin_client):
     providers = {item.get("provider") for item in refresh_payload["diagnostics"]}
     expected_provider_ids = {"official_content", "rss", "newsapi", "newsdata", "gnews"}
     assert expected_provider_ids.issubset(providers)
+    if os.environ.get("MATCH_REPORT_PAGE_SOURCES"):
+        assert "official_page" in providers
 
     for item in refresh_payload["diagnostics"]:
         assert item.get("status") in {"matched", "failed", "no_match", "no_results", "skipped", "fallback"}
@@ -150,3 +152,43 @@ def test_refresh_story_diagnostics_and_public_story_safety(admin_client):
     assert "diagnostics" not in public_story
     assert isinstance(public_story.get("sources"), list)
     assert isinstance(public_story.get("summary"), str) and public_story["summary"].strip()
+
+
+def test_refresh_contains_laliga_and_bundesliga_source_diagnostics(admin_client):
+    list_response = admin_client.get(
+        f"{BASE_URL}/api/admin/story-diagnostics",
+        params={"lang": "ru", "limit": 5},
+        timeout=45,
+    )
+    assert list_response.status_code == 200
+    matches = list_response.json().get("matches", [])
+    if not matches:
+        pytest.skip("No finished matches available to validate source diagnostics")
+
+    match_id = matches[0]["matchId"]
+    refresh_response = admin_client.post(
+        f"{BASE_URL}/api/admin/story-diagnostics/{match_id}/refresh",
+        params={"lang": "ru"},
+        timeout=75,
+    )
+    assert refresh_response.status_code == 200
+    diagnostics = refresh_response.json().get("diagnostics", [])
+    assert isinstance(diagnostics, list) and diagnostics
+
+    laliga_entry = next((d for d in diagnostics if d.get("sourceName") == "Official LaLiga News"), None)
+    bundesliga_entry = next((d for d in diagnostics if d.get("sourceName") == "Official Bundesliga News"), None)
+
+    if os.environ.get("MATCH_REPORT_PAGE_SOURCES"):
+        assert laliga_entry is not None
+        assert laliga_entry.get("provider") == "official_page"
+        assert laliga_entry.get("status") in {"matched", "no_match", "no_results", "failed"}
+        assert isinstance(laliga_entry.get("candidateCount", 0), int)
+        assert laliga_entry.get("candidateCount", 0) > 0
+
+    if os.environ.get("MATCH_REPORT_RSS_FEEDS"):
+        assert bundesliga_entry is not None
+        assert bundesliga_entry.get("provider") == "rss"
+        assert bundesliga_entry.get("status") in {"matched", "no_match", "no_results", "failed"}
+        # Regression check: redirect should be followed; final status should not remain 301.
+        if bundesliga_entry.get("httpStatus") is not None:
+            assert bundesliga_entry.get("httpStatus") != 301

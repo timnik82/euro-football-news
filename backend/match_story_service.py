@@ -1,10 +1,13 @@
 from match_story_builder import build_child_match_story
 from match_story_sources import (
     configured_content_sources,
+    configured_page_sources,
     configured_rss_feeds,
     fetch_news_articles_for_match,
     fetch_official_content_articles_for_match,
+    fetch_official_page_articles_for_match,
     fetch_rss_articles_for_match,
+    parse_next_data_articles,
     parse_official_content_articles,
     parse_rss_articles,
 )
@@ -26,11 +29,14 @@ __all__ = [
     "build_match_queries",
     "clean_text",
     "configured_content_sources",
+    "configured_page_sources",
     "configured_rss_feeds",
     "contains_any",
     "fetch_news_articles_for_match",
     "fetch_official_content_articles_for_match",
+    "fetch_official_page_articles_for_match",
     "fetch_rss_articles_for_match",
+    "parse_next_data_articles",
     "normalize_article_payload",
     "parse_article_date",
     "parse_official_content_articles",

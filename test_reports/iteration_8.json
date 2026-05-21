@@ -1,0 +1,42 @@
+{
+  "summary": "Validated backend + frontend for newly added official sources (Official LaLiga page source and Official Bundesliga RSS) and verified no regression in admin diagnostics/public story flows.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "/api/admin/story-diagnostics/{matchId}/refresh",
+        "issue": "NewsAPI.org provider intermittently/consistently returns HTTP 401 at provider-level; app handles this as a provider failure without breaking response."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_admin_story_diagnostics_api.py",
+    "/app/backend/tests/test_match_story_api.py",
+    "/app/test_reports/pytest/pytest_admin_story_diagnostics_results_iter8.xml",
+    "/app/test_reports/pytest/pytest_match_story_results_iter8.xml"
+  ],
+  "action_items": [
+    "Optional: Investigate/fix NewsAPI key/account status to reduce external provider failed diagnostics noise."
+  ],
+  "critical_code_review_comments": [
+    "Backend test module depends on REACT_APP_BACKEND_URL being present in runtime env; if unset, full module skips. Consider loading env in pytest config for deterministic CI behavior."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_admin_story_diagnostics_api.py",
+    "/app/test_reports/iteration_8.json"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "seed_data_creation": "No seed data created.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Iter8 added a targeted backend assertion test for Official LaLiga (provider official_page, candidateCount > 0) and Official Bundesliga RSS (provider rss, httpStatus != 301). UI automation verified /admin/stories provider names render and public story modal still works without diagnostics leakage.",
+  "rca of the issue": "No app-side regression found for requested source additions. External NewsAPI provider 401 is upstream credential/provider-level behavior; backend correctly degrades by marking provider as failed while preserving overall diagnostics/story response."
+}

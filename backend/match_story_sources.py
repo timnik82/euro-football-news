@@ -1,11 +1,14 @@
 import asyncio
+import html
 import json
 import os
+import re
 import time
 import xml.etree.ElementTree as ET
 from typing import Optional
 import httpx
-from config import logger
+from dotenv import dotenv_values
+from config import ROOT_DIR, logger
 from match_story_utils import (
     article_relevance_score,
     build_match_queries,
@@ -17,9 +20,11 @@ from match_story_utils import (
 
 GNEWS_RATE_LIMIT_LOCK = asyncio.Lock()
 GNEWS_RATE_LIMIT_STATE = {"last_request_at": 0.0}
+SOURCE_ENV_CACHE = None
 
 PROVIDER_LABELS = {
     "official_content": "Official content",
+    "official_page": "Official league page",
     "rss": "RSS feed",
     "newsapi": "NewsAPI.org",
     "newsdata": "NewsData.io",
@@ -55,6 +60,15 @@ def add_provider_diagnostic(
         entry["error"] = error[:240]
     diagnostics.append(entry)
 
+def source_env_value(key: str) -> Optional[str]:
+    global SOURCE_ENV_CACHE
+    value = os.environ.get(key)
+    if value:
+        return value
+    if SOURCE_ENV_CACHE is None:
+        SOURCE_ENV_CACHE = dotenv_values(ROOT_DIR / ".env")
+    return SOURCE_ENV_CACHE.get(key)
+
 async def wait_for_gnews_slot():
     async with GNEWS_RATE_LIMIT_LOCK:
         elapsed = time.monotonic() - GNEWS_RATE_LIMIT_STATE["last_request_at"]
@@ -63,7 +77,7 @@ async def wait_for_gnews_slot():
         GNEWS_RATE_LIMIT_STATE["last_request_at"] = time.monotonic()
 
 def configured_rss_feeds() -> list[dict]:
-    raw_feeds = os.environ.get("MATCH_REPORT_RSS_FEEDS")
+    raw_feeds = source_env_value("MATCH_REPORT_RSS_FEEDS")
     if not raw_feeds:
         return []
     try:
@@ -74,7 +88,7 @@ def configured_rss_feeds() -> list[dict]:
         return []
 
 def configured_content_sources() -> list[dict]:
-    raw_sources = os.environ.get("MATCH_REPORT_CONTENT_SOURCES")
+    raw_sources = source_env_value("MATCH_REPORT_CONTENT_SOURCES")
     if not raw_sources:
         return []
     try:
@@ -82,6 +96,17 @@ def configured_content_sources() -> list[dict]:
         return [source for source in sources if source.get("name") and source.get("url")]
     except Exception as e:
         logger.info(f"Content source config invalid: {e}")
+        return []
+
+def configured_page_sources() -> list[dict]:
+    raw_sources = source_env_value("MATCH_REPORT_PAGE_SOURCES")
+    if not raw_sources:
+        return []
+    try:
+        sources = json.loads(raw_sources)
+        return [source for source in sources if source.get("name") and source.get("url")]
+    except Exception as e:
+        logger.info(f"Page source config invalid: {e}")
         return []
 
 def rss_child_text(item, tag_name: str) -> str:
@@ -136,7 +161,7 @@ async def fetch_rss_articles_for_match(match: dict, diagnostics: Optional[list[d
         return []
     articles = []
     seen_urls = set()
-    async with httpx.AsyncClient(timeout=10.0, headers={"User-Agent": "GoalKickKidApp/1.0"}) as http:
+    async with httpx.AsyncClient(timeout=10.0, follow_redirects=True, headers={"User-Agent": "GoalKickKidApp/1.0"}) as http:
         for feed in feeds:
             try:
                 resp = await http.get(feed["url"])
@@ -219,6 +244,157 @@ def parse_official_content_articles(payload: dict, source_name: str) -> list[dic
         if normalized:
             articles.append(normalized)
     return articles
+
+def json_walk(value):
+    if isinstance(value, dict):
+        yield value
+        for child in value.values():
+            yield from json_walk(child)
+    elif isinstance(value, list):
+        for child in value:
+            yield from json_walk(child)
+
+def page_source_article_url(item: dict, source: dict) -> str:
+    raw_url = item.get("url") or item.get("link") or item.get("href") or item.get("path")
+    slug = item.get("slug") or item.get("titleUrlSegment")
+    base_url = source.get("baseUrl") or source["url"]
+    if raw_url:
+        if str(raw_url).startswith("http"):
+            return raw_url
+        return f"{base_url.rstrip('/')}/{str(raw_url).lstrip('/')}"
+    if slug and source.get("urlPrefix"):
+        return f"{base_url.rstrip('/')}/{source['urlPrefix'].strip('/')}/{str(slug).strip('/')}"
+    return ""
+
+def nested_image_url(item: dict) -> Optional[str]:
+    image = item.get("image") or item.get("cover") or item.get("thumbnail")
+    if isinstance(image, dict):
+        return image.get("url") or (image.get("resizes") or {}).get("medium") or (image.get("resizes") or {}).get("large")
+    if isinstance(image, str):
+        return image
+    return item.get("imageUrl") or item.get("image_url")
+
+def parse_next_data_articles(html_text: str, source: dict) -> list[dict]:
+    match = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', html_text, re.S)
+    if not match:
+        return []
+    try:
+        payload = json.loads(html.unescape(match.group(1)))
+    except Exception as e:
+        logger.info(f"Next data parse failed for {source['name']}: {e}")
+        return []
+    articles = []
+    seen_urls = set()
+    for item in json_walk(payload):
+        title = item.get("title") or item.get("headline") or item.get("name")
+        url = page_source_article_url(item, source)
+        if not title or not url or url in seen_urls:
+            continue
+        if re.search(r"\.(jpe?g|png|webp|gif|svg)(\?|$)", url, re.I):
+            continue
+        description = item.get("description") or item.get("summary") or item.get("excerpt") or item.get("subtitle") or item.get("lead")
+        normalized = normalize_article_payload("official_page", {
+            "title": title,
+            "url": url,
+            "description": strip_html(description or ""),
+            "publishedAt": item.get("publishedAt") or item.get("date") or item.get("publicationDate"),
+            "imageUrl": nested_image_url(item),
+            "sourceName": source["name"],
+        })
+        if normalized:
+            articles.append(normalized)
+            seen_urls.add(url)
+        if len(articles) >= int(source.get("limit", 25)):
+            break
+    return articles
+
+def parse_meta_content(html_text: str, names: list[str]) -> Optional[str]:
+    for name in names:
+        pattern = rf'<meta[^>]+(?:name|property)=["\']{re.escape(name)}["\'][^>]+content=["\']([^"\']+)["\']'
+        match = re.search(pattern, html_text, re.I)
+        if match:
+            return html.unescape(match.group(1))
+        reverse_pattern = rf'<meta[^>]+content=["\']([^"\']+)["\'][^>]+(?:name|property)=["\']{re.escape(name)}["\']'
+        match = re.search(reverse_pattern, html_text, re.I)
+        if match:
+            return html.unescape(match.group(1))
+    return None
+
+async def enrich_page_article(http: httpx.AsyncClient, article: dict) -> dict:
+    if article.get("description") and article.get("imageUrl"):
+        return article
+    try:
+        resp = await http.get(article["url"])
+        if resp.status_code != 200:
+            return article
+        text = resp.text
+        article["description"] = article.get("description") or strip_html(parse_meta_content(text, ["description", "og:description", "twitter:description"]) or "")[:320]
+        article["imageUrl"] = article.get("imageUrl") or parse_meta_content(text, ["og:image", "twitter:image"])
+        article["publishedAt"] = article.get("publishedAt") or parse_meta_content(text, ["article:published_time"])
+    except Exception as e:
+        logger.info(f"Official page detail enrichment failed for {article.get('url')}: {e}")
+    return article
+
+async def fetch_official_page_articles_for_match(match: dict, diagnostics: Optional[list[dict]] = None) -> list[dict]:
+    sources = configured_page_sources()
+    if not sources:
+        add_provider_diagnostic(diagnostics, "official_page", "skipped", message="No official page sources configured")
+        return []
+    articles = []
+    seen_urls = set()
+    async with httpx.AsyncClient(timeout=10.0, follow_redirects=True, headers={"User-Agent": "GoalKickKidApp/1.0"}) as http:
+        for source in sources:
+            try:
+                resp = await http.get(source["url"])
+                if resp.status_code != 200:
+                    add_provider_diagnostic(
+                        diagnostics,
+                        "official_page",
+                        "failed",
+                        source_name=source["name"],
+                        message="Official page returned a non-200 status",
+                        http_status=resp.status_code,
+                    )
+                    continue
+                parsed_articles = parse_next_data_articles(resp.text, source)
+                enriched_articles = []
+                for article in parsed_articles[: int(source.get("detailLimit", 12))]:
+                    enriched_articles.append(await enrich_page_article(http, article))
+                parsed_articles = enriched_articles + parsed_articles[int(source.get("detailLimit", 12)):]
+                matched_count = 0
+                for article in parsed_articles:
+                    if article["url"] in seen_urls:
+                        continue
+                    relevance = article_relevance_score(article, match)
+                    if relevance >= 9:
+                        article["relevanceScore"] = relevance + 3
+                        articles.append(article)
+                        seen_urls.add(article["url"])
+                        matched_count += 1
+                add_provider_diagnostic(
+                    diagnostics,
+                    "official_page",
+                    "matched" if matched_count else "no_match" if parsed_articles else "no_results",
+                    source_name=source["name"],
+                    message="Official page JSON/metadata checked for exact match reports",
+                    http_status=resp.status_code,
+                    candidate_count=len(parsed_articles),
+                    matched_count=matched_count,
+                )
+            except Exception as e:
+                logger.info(f"Official page source {source['name']} failed: {e}")
+                add_provider_diagnostic(
+                    diagnostics,
+                    "official_page",
+                    "failed",
+                    source_name=source.get("name"),
+                    message="Official page request or parsing failed",
+                    error=str(e),
+                )
+    articles.sort(key=lambda a: (a.get("relevanceScore", 0), 1 if a.get("imageUrl") else 0, a.get("publishedAt") or ""), reverse=True)
+    for article in articles:
+        article.pop("relevanceScore", None)
+    return articles[:5]
 
 async def fetch_official_content_articles_for_match(match: dict, diagnostics: Optional[list[dict]] = None) -> list[dict]:
     sources = configured_content_sources()
@@ -314,6 +490,8 @@ async def fetch_news_articles_for_match(match: dict, language: str, diagnostics:
     ]
     queries = build_match_queries(match)
     articles = await fetch_official_content_articles_for_match(match, diagnostics)
+    page_articles = await fetch_official_page_articles_for_match(match, diagnostics)
+    articles.extend([article for article in page_articles if article["url"] not in {item["url"] for item in articles}])
     rss_articles = await fetch_rss_articles_for_match(match, diagnostics)
     articles.extend([article for article in rss_articles if article["url"] not in {item["url"] for item in articles}])
     seen_urls = {article["url"] for article in articles}

@@ -62,6 +62,13 @@ def normalize_article_payload(provider: str, article: dict) -> Optional[dict]:
         image_url = article.get("imageUrl")
         published_at = article.get("publishedAt")
         description = article.get("description")
+    elif provider == "official_page":
+        title = article.get("title")
+        url = article.get("url")
+        source_name = article.get("sourceName")
+        image_url = article.get("imageUrl")
+        published_at = article.get("publishedAt")
+        description = article.get("description")
     else:
         return None
 
