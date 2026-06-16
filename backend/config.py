@@ -20,8 +20,17 @@ JWT_ALGORITHM = "HS256"
 # backend are on different domains (e.g. separate Railway subdomains), set
 # COOKIE_SECURE=true and COOKIE_SAMESITE=none so browsers send the cookie on
 # cross-site XHR. Defaults keep local HTTP development working.
-COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "false").lower() == "true"
-COOKIE_SAMESITE = os.environ.get("COOKIE_SAMESITE", "lax").lower()
+_COOKIE_SAMESITE_ALLOWED = {"lax", "strict", "none"}
+COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "false").strip().lower() == "true"
+COOKIE_SAMESITE = os.environ.get("COOKIE_SAMESITE", "lax").strip().lower()
+if COOKIE_SAMESITE not in _COOKIE_SAMESITE_ALLOWED:
+    raise RuntimeError(
+        f"COOKIE_SAMESITE must be one of {sorted(_COOKIE_SAMESITE_ALLOWED)}, got {COOKIE_SAMESITE!r}"
+    )
+# Browsers reject SameSite=None cookies unless they are also Secure, which would
+# silently break login. Fail fast instead of shipping a cookie the browser drops.
+if COOKIE_SAMESITE == "none" and not COOKIE_SECURE:
+    raise RuntimeError("COOKIE_SAMESITE=none requires COOKIE_SECURE=true")
 
 LEAGUES = {
     "PL": {"name": "Premier League", "country": "England", "emblem": "https://crests.football-data.org/PL.png"},

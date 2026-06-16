@@ -300,7 +300,7 @@ COOKIE_SECURE=true
 COOKIE_SAMESITE=none
 ```
 
-`SameSite=None` is rejected by browsers unless `Secure` is also set, so both are required together. Alternatively, put the frontend and backend on the **same** domain (custom domain with path routing, or serve the React build from FastAPI); then the default `SameSite=Lax` works and you can leave these unset. Always test login in the real deployed domain, not only locally.
+`SameSite=None` is rejected by browsers unless `Secure` is also set, so both are required together. The backend enforces this: it validates `COOKIE_SAMESITE` against `lax`/`strict`/`none` and refuses to start if `COOKIE_SAMESITE=none` is set without `COOKIE_SECURE=true`, so a misconfiguration fails loudly at startup instead of silently dropping the cookie. Alternatively, put the frontend and backend on the **same** domain (custom domain with path routing, or serve the React build from FastAPI); then the default `SameSite=Lax` works and you can leave these unset. Always test login in the real deployed domain, not only locally.
 
 ### 2. CORS Must Match The Frontend URL
 
