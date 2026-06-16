@@ -25,6 +25,37 @@ Recommended ranking:
 | 4 | Zeabur or Kuberns | Emergent-specific migration help | Both publish Emergent migration/deployment guidance, but they add another platform to learn. |
 | 5 | Vercel or Netlify alone | Frontend-only hosting | Not enough by itself, because this app also needs FastAPI and MongoDB. |
 
+## Branching Strategy: Deploy From A Branch, Not `main`
+
+If you still develop this app on Emergent occasionally, **do not merge deployment changes into `main`.** Keep `main` as Emergent's territory and deploy from a separate long-lived branch (`deploy-prep`).
+
+Why: Emergent writes directly to `main` as linear `auto-commit for <uuid>` commits, and it regenerates files from its own source of truth. Some deployment fixes live in files Emergent owns and will be reintroduced on its next sync — most notably:
+
+- `frontend/package.json` — Emergent re-adds `@emergentbase/visual-edits`.
+- `backend/requirements.txt` — Emergent may re-freeze the full dependency list.
+
+So even a clean merge into `main` can be silently undone the next time you work in Emergent. Keeping the two worlds separate avoids fighting Emergent's sync and avoids ever losing Emergent work.
+
+How it works:
+
+- `main` stays 100% Emergent-owned. Let Emergent push to it freely.
+- `deploy-prep` carries the "runnable off Emergent" changes (cookie config, pruned dependencies, removed Emergent-only packages, this guide).
+- Point Railway at `deploy-prep`, not `main`. Railway auto-redeploys when the branch updates.
+
+When Emergent adds new features to `main`, pull them **one way** into the deploy branch and re-apply the deployment tweaks:
+
+```bash
+git checkout deploy-prep
+git fetch origin
+git merge origin/main          # bring Emergent's new work in (one direction only)
+# If Emergent re-added the Emergent-only packages, strip them again:
+#   - remove "@emergentbase/visual-edits" from frontend/package.json
+#   - remove "emergentintegrations" from backend/requirements.txt
+git push                       # Railway redeploys deploy-prep
+```
+
+Never merge `deploy-prep` back into `main`. The flow is one-directional: Emergent -> `main` -> `deploy-prep` -> Railway.
+
 ## What This App Needs To Run
 
 This repository is a full-stack app, not just a static website.
