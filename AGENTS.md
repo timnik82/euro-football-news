@@ -15,7 +15,8 @@ This repository contains a football news application with a Python FastAPI backe
 
 Run backend commands from `backend/`:
 
-- `pip install -r requirements.txt` installs Python dependencies.
+- `pip install -r requirements.txt` installs runtime Python dependencies.
+- `pip install -r requirements-dev.txt` adds test-only dependencies (pytest, requests).
 - `uvicorn server:app --reload` starts the FastAPI server for local development.
 - `python -m pytest tests` runs backend tests.
 
@@ -26,7 +27,7 @@ Run frontend commands from `frontend/`:
 - `npm test -- --watchAll=false` runs frontend tests once.
 - `npm run build` creates a production build.
 
-Before committing, run `npm test -- --run` and `npm run build` when frontend changes are involved.
+Before committing, run `npm test -- --watchAll=false` and `npm run build` when frontend changes are involved.
 
 ## Coding Style & Naming Conventions
 

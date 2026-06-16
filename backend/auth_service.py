@@ -121,7 +121,7 @@ def write_test_credentials_file():
     # Dumps the admin email/password to disk in plaintext for local testing only.
     # Disabled by default so production deploys never persist credentials or crash
     # on a read-only/absent path. Opt in with WRITE_TEST_CREDENTIALS=true locally.
-    if os.environ.get("WRITE_TEST_CREDENTIALS", "false").lower() != "true":
+    if os.environ.get("WRITE_TEST_CREDENTIALS", "false").strip().lower() != "true":
         return
     path = os.environ.get("TEST_CREDENTIALS_PATH", "/app/memory/test_credentials.md")
     admin_email = os.environ["ADMIN_EMAIL"]
