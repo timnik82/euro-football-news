@@ -3,7 +3,7 @@ from bson import ObjectId
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Request, Response
 from auth_service import clear_failed_logins, create_access_token, enforce_login_lockout, get_current_user, get_jwt_secret, hash_password, record_failed_login, set_auth_cookies, verify_password
-from config import JWT_ALGORITHM
+from config import COOKIE_SAMESITE, COOKIE_SECURE, JWT_ALGORITHM
 from database import db
 from schemas import LoginInput, RegisterInput
 
@@ -62,7 +62,7 @@ async def refresh_token(request: Request, response: Response):
             raise HTTPException(401, "User not found")
         user_id = str(user["_id"])
         access = create_access_token(user_id, user["email"])
-        response.set_cookie("access_token", access, httponly=True, secure=False, samesite="lax", max_age=3600, path="/")
+        response.set_cookie("access_token", access, httponly=True, secure=COOKIE_SECURE, samesite=COOKIE_SAMESITE, max_age=3600, path="/")
         return {"message": "Token refreshed"}
     except jwt.ExpiredSignatureError:
         raise HTTPException(401, "Refresh token expired")

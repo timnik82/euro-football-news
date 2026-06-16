@@ -4,7 +4,7 @@ import jwt
 from bson import ObjectId
 from datetime import datetime, timezone, timedelta
 from fastapi import HTTPException, Request, Response
-from config import JWT_ALGORITHM, logger
+from config import COOKIE_SAMESITE, COOKIE_SECURE, JWT_ALGORITHM, logger
 from database import db
 
 MAX_FAILED_LOGIN_ATTEMPTS = 5
@@ -60,8 +60,8 @@ async def get_current_user(request: Request):
 def set_auth_cookies(response: Response, user_id: str, email: str):
     access = create_access_token(user_id, email)
     refresh = create_refresh_token(user_id)
-    response.set_cookie("access_token", access, httponly=True, secure=False, samesite="lax", max_age=3600, path="/")
-    response.set_cookie("refresh_token", refresh, httponly=True, secure=False, samesite="lax", max_age=604800, path="/")
+    response.set_cookie("access_token", access, httponly=True, secure=COOKIE_SECURE, samesite=COOKIE_SAMESITE, max_age=3600, path="/")
+    response.set_cookie("refresh_token", refresh, httponly=True, secure=COOKIE_SECURE, samesite=COOKIE_SAMESITE, max_age=604800, path="/")
 
 
 def login_attempt_identifier(email: str) -> str:
@@ -118,9 +118,18 @@ async def seed_admin():
 
 
 def write_test_credentials_file():
-    os.makedirs("/app/memory", exist_ok=True)
+    # Dumps the admin email/password to disk in plaintext for local testing only.
+    # Disabled by default so production deploys never persist credentials or crash
+    # on a read-only/absent path. Opt in with WRITE_TEST_CREDENTIALS=true locally.
+    if os.environ.get("WRITE_TEST_CREDENTIALS", "false").lower() != "true":
+        return
+    path = os.environ.get("TEST_CREDENTIALS_PATH", "/app/memory/test_credentials.md")
     admin_email = os.environ["ADMIN_EMAIL"]
     admin_password = os.environ["ADMIN_PASSWORD"]
-    with open("/app/memory/test_credentials.md", "w") as f:
-        f.write(f"# Test Credentials\n\n## Admin\n- Email: {admin_email}\n- Password: {admin_password}\n- Role: admin\n\n")
-        f.write("## Auth Endpoints\n- POST /api/auth/register\n- POST /api/auth/login\n- POST /api/auth/logout\n- GET /api/auth/me\n- POST /api/auth/refresh\n")
+    try:
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+        with open(path, "w") as f:
+            f.write(f"# Test Credentials\n\n## Admin\n- Email: {admin_email}\n- Password: {admin_password}\n- Role: admin\n\n")
+            f.write("## Auth Endpoints\n- POST /api/auth/register\n- POST /api/auth/login\n- POST /api/auth/logout\n- GET /api/auth/me\n- POST /api/auth/refresh\n")
+    except OSError as exc:
+        logger.warning("Could not write test credentials file to %s: %s", path, exc)

@@ -16,6 +16,13 @@ COMPETITIONS = "PL,CL,PD,SA,BL1,FL1,PPL"
 MATCH_STORY_CACHE_VERSION = "match-story-factual-v3"
 JWT_ALGORITHM = "HS256"
 
+# Auth cookie settings. For production HTTPS deployments where the frontend and
+# backend are on different domains (e.g. separate Railway subdomains), set
+# COOKIE_SECURE=true and COOKIE_SAMESITE=none so browsers send the cookie on
+# cross-site XHR. Defaults keep local HTTP development working.
+COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "false").lower() == "true"
+COOKIE_SAMESITE = os.environ.get("COOKIE_SAMESITE", "lax").lower()
+
 LEAGUES = {
     "PL": {"name": "Premier League", "country": "England", "emblem": "https://crests.football-data.org/PL.png"},
     "CL": {"name": "Champions League", "country": "Europe", "emblem": "https://crests.football-data.org/CL.png"},
