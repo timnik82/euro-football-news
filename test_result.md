@@ -101,3 +101,212 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+user_problem_statement: "Проверь backend-аутентификацию после добавления Emergent-managed Google sign-in в существующее приложение React + FastAPI + MongoDB"
+
+backend:
+  - task: "Email/Password Login (POST /api/auth/login)"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Email/password login working correctly. Admin login (admin@example.com/admin123) successful. Returns user data with correct auth_provider='password'. Sets access_token and refresh_token cookies properly."
+
+  - task: "Auth Verification with Cookie (GET /api/auth/me)"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Auth verification via cookie working correctly. GET /api/auth/me successfully reads session from cookie and returns authenticated user data (email, user_id, role)."
+
+  - task: "Google OAuth Session Bearer Token Auth (GET /api/auth/me with Bearer)"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Bearer token authentication working correctly. GET /api/auth/me with 'Authorization: Bearer session_token' successfully authenticates Google OAuth users. Tested with test_session_7350be54d0a14b14a263e5f23cbb000f and returned correct user data for google.test.9a76cd58@example.com."
+
+  - task: "Google Session Invalid Handling (POST /api/auth/google/session)"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Invalid session handling working correctly. POST /api/auth/google/session with invalid session_id returns proper 401 error with message 'Google sign-in session is invalid or expired'. No 500 errors, proper error handling implemented."
+
+  - task: "Logout (POST /api/auth/logout)"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Logout working correctly. POST /api/auth/logout successfully clears auth session and cookies. Returns success message. Subsequent requests to /api/auth/me correctly return 401 Unauthorized."
+
+  - task: "Session Cleanup After Logout"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Session cleanup working correctly. After logout, GET /api/auth/me correctly returns 401 Unauthorized, confirming that auth session is properly cleared."
+
+frontend:
+  - task: "Google Auth Button Visibility on Login Page"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/LoginPage.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Google auth button (data-testid='google-auth-button') is present and visible on login page. Button text displays 'Continue with Google' correctly."
+
+  - task: "Google Auth Button Visibility on Register Page"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/LoginPage.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ After toggling to register form via auth-toggle-button, Google auth button remains visible and functional. Register form shows name field correctly."
+
+  - task: "Google OAuth Redirect Flow"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/contexts/AuthContext.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Clicking Google auth button correctly initiates OAuth redirect to https://auth.emergentagent.com/oauth/ with proper redirect parameter pointing to https://euro-football-kid.preview.emergentagent.com/. No hardcoded URLs detected."
+
+  - task: "Invalid Session ID Handling"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/components/AuthCallback.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ When navigating to /#session_id=invalid-session-for-test, app correctly processes the callback, detects invalid session, and redirects to /login without breaking. AuthCallback component (data-testid='google-auth-callback') handles error gracefully."
+
+  - task: "Auth-Gated Route Protection (/favorites)"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ With valid session cookie (test_session_7350be54d0a14b14a263e5f23cbb000f), /favorites route loads successfully without redirect to login. Favorites page brand heading (data-testid='favorites-page-brand-heading') is present and page content renders correctly."
+
+  - task: "Login Screen Visual Integrity"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/LoginPage.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ All UI elements present and visible: brand heading, Google button, email/password inputs, submit button, toggle button, skip button. Login screen is visually intact with proper styling and layout."
+
+metadata:
+  created_by: "testing_agent"
+  version: "1.0"
+  test_sequence: 2
+  run_ui: true
+  test_date: "2026-08-23T12:50:15Z"
+
+test_plan:
+  current_focus:
+    - "All frontend and backend auth tests completed successfully"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "testing"
+    timestamp: "2026-08-23T12:47:00Z"
+    message: "✅ BACKEND AUTHENTICATION TESTING COMPLETED - ALL TESTS PASSED (100%)
+    
+    Comprehensive testing performed covering all requirements from review request:
+    
+    ✅ Requirement 1: Email/password login (admin@example.com/admin123) + cookie auth - WORKING
+    ✅ Requirement 2: Bearer token auth for Google sessions - WORKING  
+    ✅ Requirement 3: Invalid session error handling (401, not 500) - WORKING
+    ✅ Requirement 4: Logout without server errors - WORKING
+    ✅ Requirement 5: Test session data verification - WORKING
+    
+    Additional verification:
+    ✅ Account linking logic (no duplicates when Google email matches existing)
+    ✅ Multi-method auth support (JWT + Google OAuth session_token)
+    ✅ Database integrity (no duplicate emails)
+    ✅ Backend logs clean (no unexpected errors)
+    
+    Test Coverage: 8/8 tests passed
+    Backend Bugs Found: NONE
+    
+    The backend correctly implements Emergent-managed Google sign-in alongside existing email/password auth. Both authentication methods work properly with correct cookie handling, session management, and error responses.
+    
+    Detailed report: /app/BACKEND_AUTH_TEST_REPORT.md
+    Test scripts: /app/auth_backend_test.py, /app/comprehensive_auth_test.py"
+
+  - agent: "testing"
+    timestamp: "2026-08-23T12:50:15Z"
+    message: "✅ FRONTEND GOOGLE AUTH INTEGRATION TESTING COMPLETED - ALL TESTS PASSED (100%)
+    
+    Comprehensive UI testing performed covering all requirements from review request:
+    
+    ✅ Requirement 1: Google button visible on /login with data-testid='google-auth-button' - WORKING
+    ✅ Requirement 2: Google button remains visible after toggling to register form - WORKING
+    ✅ Requirement 3: OAuth redirect flow initiates correctly to auth.emergentagent.com - WORKING
+    ✅ Requirement 4: Invalid session_id handling (/#session_id=invalid-session-for-test) - WORKING
+    ✅ Requirement 5: Auth-gated route /favorites accessible with valid session cookie - WORKING
+    ✅ Requirement 6: Login screen visual integrity maintained - WORKING
+    
+    Test Coverage: 6/6 frontend tests passed
+    Frontend Bugs Found: NONE
+    
+    The frontend correctly implements Emergent-managed Google sign-in with proper OAuth flow, error handling, and auth-gated route protection. All data-testids are present and functional. No visual or functional issues detected.
+    
+    Screenshots saved: .screenshots/01-06_*.png
+    Console logs: Minor 401 errors expected during auth checks (normal behavior)"

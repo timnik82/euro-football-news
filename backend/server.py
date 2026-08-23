@@ -14,6 +14,7 @@ import jwt
 import httpx
 import json
 import secrets
+import uuid
 from datetime import datetime, timezone, timedelta
 from pydantic import BaseModel
 from typing import Optional
@@ -57,6 +58,8 @@ api_router = APIRouter(prefix="/api")
 
 # ============ AUTH ============
 JWT_ALGORITHM = "HS256"
+GOOGLE_SESSION_DATA_URL = "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data"
+SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60
 
 def get_jwt_secret():
     return os.environ["JWT_SECRET"]
@@ -75,34 +78,116 @@ def create_refresh_token(user_id: str) -> str:
     payload = {"sub": user_id, "exp": datetime.now(timezone.utc) + timedelta(days=7), "type": "refresh"}
     return jwt.encode(payload, get_jwt_secret(), algorithm=JWT_ALGORITHM)
 
-async def get_current_user(request: Request):
-    token = request.cookies.get("access_token")
-    if not token:
-        auth = request.headers.get("Authorization", "")
-        if auth.startswith("Bearer "):
-            token = auth[7:]
-    if not token:
-        raise HTTPException(401, "Not authenticated")
+def build_public_user(user_doc):
+    auth_provider = "password"
+    if user_doc.get("google_account_id") and user_doc.get("password_hash"):
+        auth_provider = "email_google"
+    elif user_doc.get("google_account_id"):
+        auth_provider = "google"
+
+    return {
+        "user_id": user_doc.get("user_id", ""),
+        "name": user_doc.get("name", ""),
+        "email": user_doc.get("email", ""),
+        "role": user_doc.get("role", "user"),
+        "picture": user_doc.get("picture", ""),
+        "auth_provider": auth_provider,
+    }
+
+async def ensure_user_id(user_doc):
+    if user_doc.get("user_id"):
+        return user_doc
+    generated_user_id = f"user_{uuid.uuid4().hex[:12]}"
+    await db.users.update_one({"_id": user_doc["_id"]}, {"$set": {"user_id": generated_user_id}})
+    user_doc["user_id"] = generated_user_id
+    return user_doc
+
+def normalize_expires_at(expires_at):
+    if isinstance(expires_at, str):
+        expires_at = datetime.fromisoformat(expires_at)
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    return expires_at
+
+async def get_user_from_session_token(session_token: str):
+    session_doc = await db.user_sessions.find_one({"session_token": session_token}, {"_id": 0})
+    if not session_doc:
+        return None
+
+    expires_at = normalize_expires_at(session_doc["expires_at"])
+    if expires_at < datetime.now(timezone.utc):
+        await db.user_sessions.delete_one({"session_token": session_token})
+        raise HTTPException(401, "Session expired")
+
+    user_doc = await db.users.find_one({"user_id": session_doc["user_id"]})
+    if not user_doc:
+        await db.user_sessions.delete_one({"session_token": session_token})
+        raise HTTPException(401, "User not found")
+
+    return await ensure_user_id(user_doc)
+
+async def get_user_from_jwt(token: str):
     try:
         payload = jwt.decode(token, get_jwt_secret(), algorithms=[JWT_ALGORITHM])
         if payload.get("type") != "access":
             raise HTTPException(401, "Invalid token type")
-        user = await db.users.find_one({"_id": ObjectId(payload["sub"])})
-        if not user:
+        user_doc = await db.users.find_one({"_id": ObjectId(payload["sub"])})
+        if not user_doc:
             raise HTTPException(401, "User not found")
-        user["_id"] = str(user["_id"])
-        user.pop("password_hash", None)
-        return user
+        user_doc = await ensure_user_id(user_doc)
+        user_doc["_id"] = str(user_doc["_id"])
+        return user_doc
     except jwt.ExpiredSignatureError:
         raise HTTPException(401, "Token expired")
     except jwt.InvalidTokenError:
         raise HTTPException(401, "Invalid token")
+
+async def get_current_user_doc(request: Request):
+    session_token = request.cookies.get("session_token")
+    if session_token:
+        user_doc = await get_user_from_session_token(session_token)
+        if user_doc:
+            user_doc["_id"] = str(user_doc["_id"])
+            return user_doc
+
+    token = request.cookies.get("access_token")
+    auth = request.headers.get("Authorization", "")
+    if not token and auth.startswith("Bearer "):
+        token = auth[7:]
+    if not token:
+        raise HTTPException(401, "Not authenticated")
+
+    user_doc = await get_user_from_session_token(token)
+    if user_doc:
+        user_doc["_id"] = str(user_doc["_id"])
+        return user_doc
+    return await get_user_from_jwt(token)
+
+async def get_current_user(request: Request):
+    user_doc = await get_current_user_doc(request)
+    return build_public_user(user_doc)
 
 def set_auth_cookies(response: Response, user_id: str, email: str):
     access = create_access_token(user_id, email)
     refresh = create_refresh_token(user_id)
     response.set_cookie("access_token", access, httponly=True, secure=False, samesite="lax", max_age=3600, path="/")
     response.set_cookie("refresh_token", refresh, httponly=True, secure=False, samesite="lax", max_age=604800, path="/")
+
+def set_google_session_cookie(response: Response, session_token: str):
+    response.set_cookie(
+        "session_token",
+        session_token,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        max_age=SESSION_MAX_AGE_SECONDS,
+        path="/",
+    )
+
+def clear_auth_cookies(response: Response):
+    response.delete_cookie("session_token", path="/", samesite="none")
+    response.delete_cookie("access_token", path="/")
+    response.delete_cookie("refresh_token", path="/")
 
 class RegisterInput(BaseModel):
     name: str
@@ -112,6 +197,9 @@ class RegisterInput(BaseModel):
 class LoginInput(BaseModel):
     email: str
     password: str
+
+class GoogleSessionInput(BaseModel):
+    session_id: str
 
 class FavoriteInput(BaseModel):
     type: str
@@ -126,32 +214,115 @@ async def register(data: RegisterInput, response: Response):
     if await db.users.find_one({"email": email}):
         raise HTTPException(400, "Email already registered")
     hashed = hash_password(data.password)
+    user_id = f"user_{uuid.uuid4().hex[:12]}"
     user_doc = {
+        "user_id": user_id,
         "name": data.name.strip(),
         "email": email,
         "password_hash": hashed,
         "role": "user",
+        "picture": "",
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     result = await db.users.insert_one(user_doc)
-    user_id = str(result.inserted_id)
-    set_auth_cookies(response, user_id, email)
-    return {"_id": user_id, "name": data.name.strip(), "email": email, "role": "user"}
+    internal_user_id = str(result.inserted_id)
+    user_doc["_id"] = internal_user_id
+    set_auth_cookies(response, internal_user_id, email)
+    return build_public_user(user_doc)
 
 @api_router.post("/auth/login")
 async def login(data: LoginInput, response: Response):
     email = data.email.lower().strip()
     user = await db.users.find_one({"email": email})
-    if not user or not verify_password(data.password, user["password_hash"]):
+    if not user or not user.get("password_hash") or not verify_password(data.password, user["password_hash"]):
         raise HTTPException(401, "Invalid email or password")
+    user = await ensure_user_id(user)
     user_id = str(user["_id"])
     set_auth_cookies(response, user_id, email)
-    return {"_id": user_id, "name": user["name"], "email": email, "role": user.get("role", "user")}
+    return build_public_user(user)
+
+async def fetch_google_session_data(session_id: str):
+    try:
+        async with httpx.AsyncClient() as http:
+            response = await http.get(
+                GOOGLE_SESSION_DATA_URL,
+                headers={"X-Session-ID": session_id},
+                timeout=15.0,
+            )
+    except httpx.RequestError as exc:
+        logger.error(f"Google auth session request failed: {exc}")
+        raise HTTPException(502, "Could not verify Google sign-in")
+
+    if response.status_code != 200:
+        logger.error(f"Google auth session error {response.status_code}: {response.text[:300]}")
+        if response.status_code in (400, 401, 404):
+            raise HTTPException(401, "Google sign-in session is invalid or expired")
+        raise HTTPException(502, "Could not verify Google sign-in")
+
+    return response.json()
+
+@api_router.post("/auth/google/session")
+async def exchange_google_session(data: GoogleSessionInput, response: Response):
+    google_data = await fetch_google_session_data(data.session_id.strip())
+    email = (google_data.get("email") or "").lower().strip()
+    if not email:
+        raise HTTPException(400, "Google sign-in did not return an email")
+
+    existing_user = await db.users.find_one({"email": email})
+    update_fields = {
+        "picture": google_data.get("picture", ""),
+        "google_account_id": google_data.get("id", ""),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    if google_data.get("name"):
+        update_fields["name"] = google_data["name"]
+
+    if existing_user:
+        existing_user = await ensure_user_id(existing_user)
+        clean_updates = {key: value for key, value in update_fields.items() if value}
+        if clean_updates:
+            await db.users.update_one({"_id": existing_user["_id"]}, {"$set": clean_updates})
+            existing_user.update(clean_updates)
+        user_doc = existing_user
+    else:
+        user_doc = {
+            "user_id": f"user_{uuid.uuid4().hex[:12]}",
+            "name": google_data.get("name") or email.split("@")[0],
+            "email": email,
+            "role": "user",
+            "picture": google_data.get("picture", ""),
+            "google_account_id": google_data.get("id", ""),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        result = await db.users.insert_one(user_doc)
+        user_doc["_id"] = result.inserted_id
+
+    expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+    await db.user_sessions.update_one(
+        {"session_token": google_data["session_token"]},
+        {
+            "$set": {
+                "user_id": user_doc["user_id"],
+                "session_token": google_data["session_token"],
+                "provider": "google",
+                "expires_at": expires_at,
+                "created_at": datetime.now(timezone.utc),
+                "email": email,
+            }
+        },
+        upsert=True,
+    )
+    clear_auth_cookies(response)
+    set_google_session_cookie(response, google_data["session_token"])
+    return build_public_user(user_doc)
 
 @api_router.post("/auth/logout")
-async def logout(response: Response):
-    response.delete_cookie("access_token", path="/")
-    response.delete_cookie("refresh_token", path="/")
+async def logout(request: Request, response: Response):
+    session_token = request.cookies.get("session_token")
+    if session_token:
+        await db.user_sessions.delete_many({"session_token": session_token})
+    clear_auth_cookies(response)
     return {"message": "Logged out"}
 
 @api_router.get("/auth/me")
@@ -170,6 +341,7 @@ async def refresh_token(request: Request, response: Response):
         user = await db.users.find_one({"_id": ObjectId(payload["sub"])})
         if not user:
             raise HTTPException(401, "User not found")
+        user = await ensure_user_id(user)
         user_id = str(user["_id"])
         access = create_access_token(user_id, user["email"])
         response.set_cookie("access_token", access, httponly=True, secure=False, samesite="lax", max_age=3600, path="/")
@@ -588,13 +760,13 @@ async def get_stories():
 # ============ FAVORITES ============
 @api_router.get("/favorites")
 async def get_favorites(request: Request):
-    user = await get_current_user(request)
+    user = await get_current_user_doc(request)
     favs = await db.favorites.find({"user_id": user["_id"]}, {"_id": 0}).to_list(100)
     return favs
 
 @api_router.post("/favorites")
 async def toggle_favorite(data: FavoriteInput, request: Request):
-    user = await get_current_user(request)
+    user = await get_current_user_doc(request)
     existing = await db.favorites.find_one({
         "user_id": user["_id"], "type": data.type, "item_id": data.item_id
     })
@@ -617,30 +789,43 @@ async def seed_admin():
     if existing is None:
         hashed = hash_password(admin_password)
         await db.users.insert_one({
+            "user_id": f"user_{uuid.uuid4().hex[:12]}",
             "email": admin_email, "password_hash": hashed,
             "name": "Admin", "role": "admin",
+            "picture": "",
             "created_at": datetime.now(timezone.utc).isoformat()
         })
         logger.info(f"Admin seeded: {admin_email}")
-    elif not verify_password(admin_password, existing["password_hash"]):
-        await db.users.update_one(
-            {"email": admin_email},
-            {"$set": {"password_hash": hash_password(admin_password)}}
-        )
+        return
+
+    update_fields = {}
+    if not existing.get("user_id"):
+        update_fields["user_id"] = f"user_{uuid.uuid4().hex[:12]}"
+    if not existing.get("picture"):
+        update_fields["picture"] = ""
+    if not verify_password(admin_password, existing["password_hash"]):
+        update_fields["password_hash"] = hash_password(admin_password)
+    if update_fields:
+        await db.users.update_one({"email": admin_email}, {"$set": update_fields})
 
 @app.on_event("startup")
 async def startup():
     await db.users.create_index("email", unique=True)
+    await db.users.create_index("user_id", unique=True, sparse=True)
     await db.api_cache.create_index("key", unique=True)
     await db.api_cache.create_index("expires_at", expireAfterSeconds=0)
     await db.favorites.create_index([("user_id", 1), ("type", 1), ("item_id", 1)], unique=True)
+    await db.user_sessions.create_index("session_token", unique=True)
+    await db.user_sessions.create_index("user_id")
+    await db.user_sessions.create_index("expires_at", expireAfterSeconds=0)
     await seed_admin()
     os.makedirs("/app/memory", exist_ok=True)
     admin_email = os.environ.get("ADMIN_EMAIL", "admin@example.com")
     admin_password = os.environ.get("ADMIN_PASSWORD", "admin123")
     with open("/app/memory/test_credentials.md", "w") as f:
         f.write(f"# Test Credentials\n\n## Admin\n- Email: {admin_email}\n- Password: {admin_password}\n- Role: admin\n\n")
-        f.write("## Auth Endpoints\n- POST /api/auth/register\n- POST /api/auth/login\n- POST /api/auth/logout\n- GET /api/auth/me\n- POST /api/auth/refresh\n")
+        f.write("## Google OAuth\n- Provider: Emergent-managed Google social login\n- Google sign-in is available on both login and registration states\n- Existing app users are linked automatically when the Google email matches the same email\n- Allowed Google test accounts: use an approved Google account during manual QA (no app-managed password)\n\n")
+        f.write("## Auth Endpoints\n- POST /api/auth/register\n- POST /api/auth/login\n- POST /api/auth/google/session\n- POST /api/auth/logout\n- GET /api/auth/me\n- POST /api/auth/refresh\n")
 
 @app.on_event("shutdown")
 async def shutdown():

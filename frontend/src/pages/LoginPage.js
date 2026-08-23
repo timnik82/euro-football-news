@@ -8,6 +8,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LogIn, UserPlus } from "lucide-react";
 
+const GoogleIcon = () => (
+  <svg viewBox="0 0 24 24" className="w-5 h-5" aria-hidden="true">
+    <path fill="#EA4335" d="M12 10.2v3.9h5.4c-.2 1.2-.9 2.2-1.9 2.9l3 2.3c1.8-1.6 2.8-4 2.8-6.8 0-.6-.1-1.2-.2-1.8H12z" />
+    <path fill="#34A853" d="M12 21c2.6 0 4.8-.9 6.4-2.5l-3-2.3c-.8.5-2 .9-3.4.9-2.6 0-4.7-1.7-5.5-4.1l-3.1 2.4C5 18.6 8.2 21 12 21z" />
+    <path fill="#4A90E2" d="M6.5 13c-.2-.5-.3-1-.3-1.6s.1-1.1.3-1.6L3.4 7.4C2.8 8.6 2.5 9.8 2.5 11.4s.3 2.8.9 4l3.1-2.4z" />
+    <path fill="#FBBC05" d="M12 5.8c1.4 0 2.6.5 3.6 1.4l2.7-2.7C16.8 3.1 14.6 2 12 2 8.2 2 5 4.4 3.4 7.4l3.1 2.4C7.3 7.5 9.4 5.8 12 5.8z" />
+  </svg>
+);
+
 export default function LoginPage() {
   const [isRegister, setIsRegister] = useState(false);
   const [name, setName] = useState("");
@@ -15,7 +24,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const { login, register } = useAuth();
+  const { login, register, signInWithGoogle } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
 
@@ -54,6 +63,28 @@ export default function LoginPage() {
             <p className="text-slate-500 font-semibold mt-1">
               {isRegister ? t("login.registerSub") : t("login.loginSub")}
             </p>
+          </div>
+
+          <div className="space-y-4 mb-6">
+            <Button
+              type="button"
+              variant="outline"
+              data-testid="google-auth-button"
+              onClick={signInWithGoogle}
+              className="w-full h-14 rounded-2xl border-2 border-slate-300 bg-white hover:bg-slate-50 text-slate-800 text-base font-bold"
+            >
+              <span className="flex items-center gap-3">
+                <GoogleIcon />
+                {t("login.googleBtn")}
+              </span>
+            </Button>
+            <div className="flex items-center gap-3" data-testid="auth-method-divider">
+              <div className="h-px flex-1 bg-slate-200" />
+              <span className="text-xs font-bold uppercase tracking-[0.24em] text-slate-400">
+                {t("login.googleDivider")}
+              </span>
+              <div className="h-px flex-1 bg-slate-200" />
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">

@@ -102,6 +102,12 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - Kept the API-driven essentials visible: competition, teams, crests, and score
 - Verified that only the extra description disappeared while the rest of the card stayed intact
 
+### Phase 12 — Google Sign-In Integration (done — Aug 2026)
+- Added Emergent-managed Google sign-in alongside the existing email/password auth flow
+- Added OAuth callback handling in the frontend, Google session exchange in the backend, and session_token-based auth support in `/api/auth/me`
+- Linked Google accounts to existing users automatically when the Google email matches an existing app account
+- Updated login/register UI to show Google sign-in and verified auth-gated routes with Google-style sessions
+
 ## Key Technical Details
 - Frontend: React, TailwindCSS, Shadcn UI, PWA Service Worker
 - Backend: FastAPI, PyJWT (cookie auth), HTTPX

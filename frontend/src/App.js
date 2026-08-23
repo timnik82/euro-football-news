@@ -1,7 +1,8 @@
 import "@/App.css";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { LanguageProvider, useLanguage } from "@/contexts/LanguageContext";
+import AuthCallback from "@/components/AuthCallback";
 import Navigation from "@/components/Navigation";
 import LoginPage from "@/pages/LoginPage";
 import HomePage from "@/pages/HomePage";
@@ -31,6 +32,8 @@ function AppLayout() {
   const { user, loading } = useAuth();
   const { t } = useLanguage();
   const isOnline = useOnlineStatus();
+  const location = useLocation();
+  const isAuthCallback = location.hash?.includes("session_id=");
 
   if (loading) {
     return (
@@ -46,16 +49,22 @@ function AppLayout() {
   return (
     <div className={`min-h-screen bg-[#F0F9FF] pb-24 ${!isOnline ? 'pt-10' : ''}`}>
       <OfflineBanner />
-      <Routes>
-        <Route path="/login" element={user ? <Navigate to="/" /> : <LoginPage />} />
-        <Route path="/" element={<HomePage />} />
-        <Route path="/leagues" element={<LeaguesList />} />
-        <Route path="/league/:code" element={<LeagueDetail />} />
-        <Route path="/team/:id" element={<TeamPage />} />
-        <Route path="/favorites" element={user ? <FavoritesPage /> : <Navigate to="/login" />} />
-        <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
-      <Navigation />
+      {isAuthCallback ? (
+        <AuthCallback />
+      ) : (
+        <>
+          <Routes>
+            <Route path="/login" element={user ? <Navigate to="/" /> : <LoginPage />} />
+            <Route path="/" element={<HomePage />} />
+            <Route path="/leagues" element={<LeaguesList />} />
+            <Route path="/league/:code" element={<LeagueDetail />} />
+            <Route path="/team/:id" element={<TeamPage />} />
+            <Route path="/favorites" element={user ? <FavoritesPage /> : <Navigate to="/login" />} />
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+          <Navigation />
+        </>
+      )}
     </div>
   );
 }
