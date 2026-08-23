@@ -8,7 +8,17 @@ export const DATE_LOCALES = { en: "en-GB", ru: "ru-RU", pt: "pt-PT" };
 
 const translations = {
   en: {
-    nav: { home: "Home", leagues: "Leagues", favorites: "Favorites", login: "Login", logout: "Logout" },
+    nav: {
+      home: "Home",
+      leagues: "Leagues",
+      favorites: "Favorites",
+      login: "Login",
+      logout: "Logout",
+      profile: "Profile",
+      providerGoogle: "Signed in with Google",
+      providerEmail: "Signed in with email",
+      providerLinked: "Email + Google linked",
+    },
     home: {
       title: "Goal Kick!",
       comingUp: "Coming Up",
@@ -187,7 +197,17 @@ const translations = {
     },
   },
   ru: {
-    nav: { home: "Главная", leagues: "Лиги", favorites: "Избранное", login: "Войти", logout: "Выход" },
+    nav: {
+      home: "Главная",
+      leagues: "Лиги",
+      favorites: "Избранное",
+      login: "Войти",
+      logout: "Выход",
+      profile: "Профиль",
+      providerGoogle: "Вход через Google",
+      providerEmail: "Вход по почте",
+      providerLinked: "Почта и Google связаны",
+    },
     home: {
       title: "Goal Kick!",
       comingUp: "Ближайшие матчи",
@@ -362,7 +382,17 @@ const translations = {
     },
   },
   pt: {
-    nav: { home: "Inicio", leagues: "Ligas", favorites: "Favoritos", login: "Entrar", logout: "Sair" },
+    nav: {
+      home: "Inicio",
+      leagues: "Ligas",
+      favorites: "Favoritos",
+      login: "Entrar",
+      logout: "Sair",
+      profile: "Perfil",
+      providerGoogle: "Sessao com Google",
+      providerEmail: "Sessao com email",
+      providerLinked: "Email e Google ligados",
+    },
     home: {
       title: "Goal Kick!",
       comingUp: "Proximos Jogos",

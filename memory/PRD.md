@@ -108,6 +108,11 @@ Build a PWA for an 11-inch tablet for a 10-year-old kid with up-to-date news abo
 - Linked Google accounts to existing users automatically when the Google email matches an existing app account
 - Updated login/register UI to show Google sign-in and verified auth-gated routes with Google-style sessions
 
+### Phase 13 — Profile Badge in Navigation (done — Aug 2026)
+- Replaced the plain auth icon in bottom navigation with a small user profile badge for logged-in users
+- Added avatar support for Google users and initials fallback for email/password users
+- Added a compact profile dropdown with name, email, auth-provider badge, and logout action
+
 ## Key Technical Details
 - Frontend: React, TailwindCSS, Shadcn UI, PWA Service Worker
 - Backend: FastAPI, PyJWT (cookie auth), HTTPX
