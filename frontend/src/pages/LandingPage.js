@@ -62,12 +62,14 @@ export default function LandingPage({ onEnter }) {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+
+    const loadPreview = async () => {
       try {
         const { data } = await axios.get(`${API}/matches/today`);
         if (cancelled) return;
         if (data?.length) {
           setPreviewMatches(data.slice(0, 3));
+          setIsUpcomingPreview(false);
           setPreviewLoading(false);
           return;
         }
@@ -79,9 +81,16 @@ export default function LandingPage({ onEnter }) {
       } catch {
         if (!cancelled) setPreviewLoading(false);
       }
-    })();
+    };
+
+    loadPreview();
+    // A visitor can sit on this hero for a while before clicking through,
+    // so refresh periodically - otherwise a match that kicks off or ends
+    // while the page is open would show a stale score indefinitely.
+    const intervalId = setInterval(loadPreview, 60000);
     return () => {
       cancelled = true;
+      clearInterval(intervalId);
     };
   }, []);
 

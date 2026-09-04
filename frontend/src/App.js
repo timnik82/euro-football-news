@@ -38,16 +38,18 @@ function AppLayout() {
   const location = useLocation();
   const isAuthCallback = location.hash?.includes("session_id=");
   // The flag lives in sessionStorage (other pages, like the login screen's
-  // "skip" link, set it via a plain navigation) so it's read fresh on every
-  // render rather than cached in state - a cached copy would lag by one
-  // render after navigating back here from elsewhere. This setter's return
-  // value is unused; it only exists to force that fresh read to happen.
-  const [, forceRecheck] = useState(0);
+  // "skip" link, set it via a plain navigation) so it's re-read on every
+  // render rather than trusted from stale state alone - that catches a skip
+  // made elsewhere. `entered` is a same-tab fallback for when storage is
+  // blocked (private browsing etc.): skipLanding() would silently no-op
+  // there, so without it the CTA click would leave the visitor stuck on
+  // this screen with no visible response.
+  const [entered, setEntered] = useState(false);
   const enterApp = () => {
     skipLanding();
-    forceRecheck((n) => n + 1);
+    setEntered(true);
   };
-  const showLanding = !loading && !user && !hasSkippedLanding();
+  const showLanding = !loading && !user && !entered && !hasSkippedLanding();
 
   if (loading) {
     return (
