@@ -1,5 +1,5 @@
 import "@/App.css";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { LanguageProvider, useLanguage } from "@/contexts/LanguageContext";
@@ -37,18 +37,17 @@ function AppLayout() {
   const isOnline = useOnlineStatus();
   const location = useLocation();
   const isAuthCallback = location.hash?.includes("session_id=");
-  const [landingSkipped, setLandingSkipped] = useState(hasSkippedLanding);
-  // Other pages (e.g. the login screen's "skip" link) can set the flag
-  // via a plain navigation rather than this component's state, so re-sync
-  // whenever the route changes instead of only trusting local state.
-  useEffect(() => {
-    if (hasSkippedLanding()) setLandingSkipped(true);
-  }, [location.pathname]);
+  // The flag lives in sessionStorage (other pages, like the login screen's
+  // "skip" link, set it via a plain navigation) so it's read fresh on every
+  // render rather than cached in state - a cached copy would lag by one
+  // render after navigating back here from elsewhere. This setter's return
+  // value is unused; it only exists to force that fresh read to happen.
+  const [, forceRecheck] = useState(0);
   const enterApp = () => {
     skipLanding();
-    setLandingSkipped(true);
+    forceRecheck((n) => n + 1);
   };
-  const showLanding = !loading && !user && !landingSkipped;
+  const showLanding = !loading && !user && !hasSkippedLanding();
 
   if (loading) {
     return (

@@ -9,7 +9,7 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const HERO_IMAGE =
   "https://images.unsplash.com/photo-1542652420-d071027a88bb?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzZ8MHwxfHNlYXJjaHwyfHxldXJvcGVhbiUyMGZvb3RiYWxsJTIwc3RhZGl1bXxlbnwwfHx8fDE3NzU1OTY2MDN8MA&ixlib=rb-4.1.0&q=85";
 
-function ScorePreviewRow({ match }) {
+function ScorePreviewRow({ match, showDate }) {
   const isLive = match.status === "IN_PLAY" || match.status === "PAUSED";
   const isFinished = match.status === "FINISHED";
   const ft = match.score?.fullTime || {};
@@ -17,7 +17,8 @@ function ScorePreviewRow({ match }) {
   const awayScore = isLive ? (ft.away ?? match.score?.halfTime?.away ?? "-") : ft.away;
   let timeLabel = "";
   try {
-    timeLabel = format(parseISO(match.utcDate), "HH:mm");
+    const d = parseISO(match.utcDate);
+    timeLabel = showDate ? format(d, "EEE HH:mm") : format(d, "HH:mm");
   } catch {
     timeLabel = "";
   }
@@ -56,20 +57,27 @@ function ScorePreviewRow({ match }) {
 export default function LandingPage({ onEnter }) {
   const { t } = useLanguage();
   const [previewMatches, setPreviewMatches] = useState([]);
+  const [previewLoading, setPreviewLoading] = useState(true);
+  const [isUpcomingPreview, setIsUpcomingPreview] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const { data } = await axios.get(`${API}/matches/today`);
-        if (!cancelled && data?.length) {
+        if (cancelled) return;
+        if (data?.length) {
           setPreviewMatches(data.slice(0, 3));
+          setPreviewLoading(false);
           return;
         }
         const upcoming = await axios.get(`${API}/matches/upcoming`);
-        if (!cancelled) setPreviewMatches(upcoming.data.slice(0, 3));
+        if (cancelled) return;
+        setPreviewMatches(upcoming.data.slice(0, 3));
+        setIsUpcomingPreview(true);
+        setPreviewLoading(false);
       } catch {
-        // Silently keep the card empty; the hero still works without it.
+        if (!cancelled) setPreviewLoading(false);
       }
     })();
     return () => {
@@ -126,7 +134,7 @@ export default function LandingPage({ onEnter }) {
         <div className="card-tactile p-4 w-full md:w-80 flex-shrink-0" data-testid="landing-score-preview">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">
-              {t("landing.todayLabel")}
+              {isUpcomingPreview ? t("landing.upcomingLabel") : t("landing.todayLabel")}
             </h3>
             {liveCount > 0 && (
               <span className="text-red-500 text-xs font-bold flex items-center gap-1">
@@ -135,10 +143,14 @@ export default function LandingPage({ onEnter }) {
               </span>
             )}
           </div>
-          {previewMatches.length > 0 ? (
-            previewMatches.map((m) => <ScorePreviewRow key={m.id} match={m} />)
-          ) : (
+          {previewLoading ? (
             <p className="text-sm text-slate-400 font-semibold py-2">{t("landing.previewLoading")}</p>
+          ) : previewMatches.length > 0 ? (
+            previewMatches.map((m) => (
+              <ScorePreviewRow key={m.id} match={m} showDate={isUpcomingPreview} />
+            ))
+          ) : (
+            <p className="text-sm text-slate-400 font-semibold py-2">{t("landing.previewEmpty")}</p>
           )}
         </div>
       </div>

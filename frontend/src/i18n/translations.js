@@ -47,7 +47,9 @@ const translations = {
       subheadline: "Clear scores, simple stories and today's matches - without the noise of a hundred other apps.",
       cta: "See today's matches",
       todayLabel: "Today",
+      upcomingLabel: "Upcoming",
       previewLoading: "Loading today's matches...",
+      previewEmpty: "No matches right now",
     },
     login: {
       welcomeBack: "Welcome Back!",
@@ -243,7 +245,9 @@ const translations = {
       subheadline: "Понятные счёты, простые истории и матчи дня - без лишнего шума десятков других приложений.",
       cta: "Смотреть матчи дня",
       todayLabel: "Сегодня",
+      upcomingLabel: "Ближайшие матчи",
       previewLoading: "Загружаем матчи дня...",
+      previewEmpty: "Сейчас нет матчей",
     },
     login: {
       welcomeBack: "С возвращением!",
@@ -435,7 +439,9 @@ const translations = {
       subheadline: "Resultados claros, historias simples e os jogos de hoje - sem o ruido de mais uma dezena de apps.",
       cta: "Ver os jogos de hoje",
       todayLabel: "Hoje",
+      upcomingLabel: "Proximos jogos",
       previewLoading: "A carregar os jogos de hoje...",
+      previewEmpty: "Sem jogos agora",
     },
     login: {
       welcomeBack: "Bem-vindo de volta!",
