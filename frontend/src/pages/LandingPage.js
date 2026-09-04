@@ -6,8 +6,53 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { BrandHeading } from "@/components/BrandHeading";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
-const HERO_IMAGE =
-  "https://images.unsplash.com/photo-1542652420-d071027a88bb?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzZ8MHwxfHNlYXJjaHwyfHxldXJvcGVhbiUyMGZvb3RiYWxsJTIwc3RhZGl1bXxlbnwwfHx8fDE3NzU1OTY2MDN8MA&ixlib=rb-4.1.0&q=85";
+const HERO_VIDEO = "/media/hero.mp4";
+const HERO_POSTER = "/media/hero-poster.jpg";
+
+function HeroMedia() {
+  const [videoEnabled, setVideoEnabled] = useState(false);
+  const [videoReady, setVideoReady] = useState(false);
+
+  useEffect(() => {
+    const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const connection = navigator.connection;
+    const slowConnection =
+      connection?.saveData || ["slow-2g", "2g"].includes(connection?.effectiveType);
+    if (!reducedMotion && !slowConnection) setVideoEnabled(true);
+  }, []);
+
+  return (
+    <>
+      {/* Always rendered first so it's the LCP element and the immediate
+          fallback if the video is disabled, still loading, or fails. */}
+      <img
+        src={HERO_POSTER}
+        alt=""
+        width="1920"
+        height="1080"
+        fetchPriority="high"
+        decoding="async"
+        className="absolute inset-0 w-full h-full object-cover"
+      />
+      {videoEnabled && (
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+          poster={HERO_POSTER}
+          onCanPlay={() => setVideoReady(true)}
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${
+            videoReady ? "opacity-100" : "opacity-0"
+          }`}
+        >
+          <source src={HERO_VIDEO} type="video/mp4" />
+        </video>
+      )}
+    </>
+  );
+}
 
 function ScorePreviewRow({ match, showDate }) {
   const isLive = match.status === "IN_PLAY" || match.status === "PAUSED";
@@ -109,16 +154,7 @@ export default function LandingPage({ onEnter }) {
 
   return (
     <div className="relative min-h-[70vh] sm:min-h-[85vh] overflow-hidden rounded-b-[2.5rem]">
-      <img
-        src={HERO_IMAGE}
-        alt=""
-        width="1920"
-        height="1080"
-        fetchPriority="high"
-        decoding="async"
-        className="absolute inset-0 w-full h-full object-cover"
-        style={{ objectPosition: "center 65%" }}
-      />
+      <HeroMedia />
       <div className="absolute inset-0 bg-gradient-to-br from-slate-900/85 via-slate-900/45 to-slate-900/20" />
 
       <div className="relative z-10 flex items-center justify-between px-5 sm:px-8 pt-6">
