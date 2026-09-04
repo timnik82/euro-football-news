@@ -64,21 +64,30 @@ export default function LandingPage({ onEnter }) {
     let cancelled = false;
 
     const loadPreview = async () => {
+      let todayMatches = [];
       try {
         const { data } = await axios.get(`${API}/matches/today`);
-        if (cancelled) return;
-        if (data?.length) {
-          setPreviewMatches(data.slice(0, 3));
-          setIsUpcomingPreview(false);
-          setPreviewLoading(false);
-          return;
-        }
-        const upcoming = await axios.get(`${API}/matches/upcoming`);
-        if (cancelled) return;
-        setPreviewMatches(upcoming.data.slice(0, 3));
-        setIsUpcomingPreview(true);
-        setPreviewLoading(false);
+        todayMatches = data || [];
       } catch {
+        // /matches/today failing shouldn't block trying /matches/upcoming below.
+      }
+      if (cancelled) return;
+
+      if (todayMatches.length) {
+        setPreviewMatches(todayMatches.slice(0, 3));
+        setIsUpcomingPreview(false);
+        setPreviewLoading(false);
+        return;
+      }
+
+      try {
+        const { data } = await axios.get(`${API}/matches/upcoming`);
+        if (cancelled) return;
+        setPreviewMatches(data.slice(0, 3));
+        setIsUpcomingPreview(true);
+      } catch {
+        // Both requests failed; the empty state below covers this.
+      } finally {
         if (!cancelled) setPreviewLoading(false);
       }
     };
