@@ -1,4 +1,5 @@
 import "@/App.css";
+import { useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { LanguageProvider, useLanguage } from "@/contexts/LanguageContext";
@@ -6,6 +7,7 @@ import AuthCallback from "@/components/AuthCallback";
 import Navigation from "@/components/Navigation";
 import LoginPage from "@/pages/LoginPage";
 import HomePage from "@/pages/HomePage";
+import LandingPage from "@/pages/LandingPage";
 import LeagueDetail, { LeaguesList } from "@/pages/LeaguePage";
 import FavoritesPage from "@/pages/FavoritesPage";
 import TeamPage from "@/pages/TeamPage";
@@ -34,6 +36,14 @@ function AppLayout() {
   const isOnline = useOnlineStatus();
   const location = useLocation();
   const isAuthCallback = location.hash?.includes("session_id=");
+  const [skipLanding, setSkipLanding] = useState(
+    () => sessionStorage.getItem("gk_skip_landing") === "1"
+  );
+  const enterApp = () => {
+    sessionStorage.setItem("gk_skip_landing", "1");
+    setSkipLanding(true);
+  };
+  const showLanding = !loading && !user && !skipLanding;
 
   if (loading) {
     return (
@@ -55,14 +65,17 @@ function AppLayout() {
         <>
           <Routes>
             <Route path="/login" element={user ? <Navigate to="/" /> : <LoginPage />} />
-            <Route path="/" element={<HomePage />} />
+            <Route
+              path="/"
+              element={showLanding ? <LandingPage onEnter={enterApp} /> : <HomePage />}
+            />
             <Route path="/leagues" element={<LeaguesList />} />
             <Route path="/league/:code" element={<LeagueDetail />} />
             <Route path="/team/:id" element={<TeamPage />} />
             <Route path="/favorites" element={user ? <FavoritesPage /> : <Navigate to="/login" />} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
-          <Navigation />
+          {!(showLanding && location.pathname === "/") && <Navigation />}
         </>
       )}
     </div>
