@@ -107,8 +107,17 @@ export default function LandingPage({ onEnter }) {
 
   useEffect(() => {
     let cancelled = false;
+    // The 60s poll below can fire again before a slow request from the
+    // previous tick has resolved. Without this, that older response could
+    // land after a newer one and overwrite fresher data with stale data.
+    // Each call claims the counter as its own id and only commits state if
+    // no later call has claimed it since.
+    let latestRequestId = 0;
 
     const loadPreview = async () => {
+      const requestId = ++latestRequestId;
+      const isStale = () => cancelled || requestId !== latestRequestId;
+
       let todayMatches = [];
       try {
         const { data } = await axios.get(`${API}/matches/today`);
@@ -116,7 +125,7 @@ export default function LandingPage({ onEnter }) {
       } catch {
         // /matches/today failing shouldn't block trying /matches/upcoming below.
       }
-      if (cancelled) return;
+      if (isStale()) return;
 
       if (todayMatches.length) {
         setPreviewMatches(todayMatches.slice(0, 3));
@@ -127,13 +136,15 @@ export default function LandingPage({ onEnter }) {
 
       try {
         const { data } = await axios.get(`${API}/matches/upcoming`);
-        if (cancelled) return;
+        if (isStale()) return;
         setPreviewMatches(data.slice(0, 3));
         setIsUpcomingPreview(true);
       } catch {
-        // Both requests failed; the empty state below covers this.
+        // Both requests failed on this poll; keep whatever was last shown
+        // (empty state on the very first load, last-known-good matches on
+        // a later refresh) rather than flashing to an error state.
       } finally {
-        if (!cancelled) setPreviewLoading(false);
+        if (!isStale()) setPreviewLoading(false);
       }
     };
 
