@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LogIn, UserPlus } from "lucide-react";
+import { skipLanding } from "@/lib/landingSession";
 
 const GoogleIcon = () => (
   <svg viewBox="0 0 24 24" className="w-5 h-5" aria-hidden="true">
@@ -147,7 +148,8 @@ export default function LoginPage() {
           </div>
           <div className="text-center mt-3">
             <button
-              data-testid="skip-login-button" type="button" onClick={() => navigate("/")}
+              data-testid="skip-login-button" type="button"
+              onClick={() => { skipLanding(); navigate("/"); }}
               className="text-slate-400 font-semibold hover:text-slate-600 transition-colors text-sm"
             >
               {t("login.skip")}

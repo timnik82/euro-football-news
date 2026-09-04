@@ -42,6 +42,15 @@ const translations = {
       ast: "ast",
       played: "P", won: "W", drawn: "D", lost: "L", gd: "GD", points: "Pts", team: "Team",
     },
+    landing: {
+      headline: "The football news your family can actually follow.",
+      subheadline: "Clear scores, simple stories and today's matches - without the noise of a hundred other apps.",
+      cta: "See today's matches",
+      todayLabel: "Today",
+      upcomingLabel: "Upcoming",
+      previewLoading: "Loading today's matches...",
+      previewEmpty: "No matches right now",
+    },
     login: {
       welcomeBack: "Welcome Back!",
       joinClub: "Join the Club!",
@@ -231,6 +240,15 @@ const translations = {
       ast: "пас",
       played: "И", won: "В", drawn: "Н", lost: "П", gd: "РМ", points: "Очки", team: "Команда",
     },
+    landing: {
+      headline: "Футбольные новости, которые легко читать всей семьёй.",
+      subheadline: "Понятные счёты, простые истории и матчи дня - без лишнего шума десятков других приложений.",
+      cta: "Смотреть матчи дня",
+      todayLabel: "Сегодня",
+      upcomingLabel: "Ближайшие матчи",
+      previewLoading: "Загружаем матчи дня...",
+      previewEmpty: "Сейчас нет матчей",
+    },
     login: {
       welcomeBack: "С возвращением!",
       joinClub: "Вступай в клуб!",
@@ -415,6 +433,15 @@ const translations = {
       pts: "pts",
       ast: "ass",
       played: "J", won: "V", drawn: "E", lost: "D", gd: "DG", points: "Pts", team: "Equipa",
+    },
+    landing: {
+      headline: "As noticias de futebol que a tua familia consegue acompanhar.",
+      subheadline: "Resultados claros, historias simples e os jogos de hoje - sem o ruido de mais uma dezena de apps.",
+      cta: "Ver os jogos de hoje",
+      todayLabel: "Hoje",
+      upcomingLabel: "Proximos jogos",
+      previewLoading: "A carregar os jogos de hoje...",
+      previewEmpty: "Sem jogos agora",
     },
     login: {
       welcomeBack: "Bem-vindo de volta!",

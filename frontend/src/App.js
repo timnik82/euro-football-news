@@ -1,4 +1,5 @@
 import "@/App.css";
+import { useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { LanguageProvider, useLanguage } from "@/contexts/LanguageContext";
@@ -6,12 +7,14 @@ import AuthCallback from "@/components/AuthCallback";
 import Navigation from "@/components/Navigation";
 import LoginPage from "@/pages/LoginPage";
 import HomePage from "@/pages/HomePage";
+import LandingPage from "@/pages/LandingPage";
 import LeagueDetail, { LeaguesList } from "@/pages/LeaguePage";
 import FavoritesPage from "@/pages/FavoritesPage";
 import TeamPage from "@/pages/TeamPage";
 import { Toaster } from "@/components/ui/sonner";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { WifiOff } from "lucide-react";
+import { hasSkippedLanding, skipLanding } from "@/lib/landingSession";
 
 function OfflineBanner() {
   const isOnline = useOnlineStatus();
@@ -34,6 +37,19 @@ function AppLayout() {
   const isOnline = useOnlineStatus();
   const location = useLocation();
   const isAuthCallback = location.hash?.includes("session_id=");
+  // The flag lives in sessionStorage (other pages, like the login screen's
+  // "skip" link, set it via a plain navigation) so it's re-read on every
+  // render rather than trusted from stale state alone - that catches a skip
+  // made elsewhere. `entered` is a same-tab fallback for when storage is
+  // blocked (private browsing etc.): skipLanding() would silently no-op
+  // there, so without it the CTA click would leave the visitor stuck on
+  // this screen with no visible response.
+  const [entered, setEntered] = useState(false);
+  const enterApp = () => {
+    skipLanding();
+    setEntered(true);
+  };
+  const showLanding = !loading && !user && !entered && !hasSkippedLanding();
 
   if (loading) {
     return (
@@ -55,14 +71,17 @@ function AppLayout() {
         <>
           <Routes>
             <Route path="/login" element={user ? <Navigate to="/" /> : <LoginPage />} />
-            <Route path="/" element={<HomePage />} />
+            <Route
+              path="/"
+              element={showLanding ? <LandingPage onEnter={enterApp} /> : <HomePage />}
+            />
             <Route path="/leagues" element={<LeaguesList />} />
             <Route path="/league/:code" element={<LeagueDetail />} />
             <Route path="/team/:id" element={<TeamPage />} />
             <Route path="/favorites" element={user ? <FavoritesPage /> : <Navigate to="/login" />} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
-          <Navigation />
+          {!(showLanding && location.pathname === "/") && <Navigation />}
         </>
       )}
     </div>
