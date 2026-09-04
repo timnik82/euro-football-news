@@ -1,5 +1,5 @@
 import "@/App.css";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { LanguageProvider, useLanguage } from "@/contexts/LanguageContext";
@@ -14,6 +14,7 @@ import TeamPage from "@/pages/TeamPage";
 import { Toaster } from "@/components/ui/sonner";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { WifiOff } from "lucide-react";
+import { hasSkippedLanding, skipLanding } from "@/lib/landingSession";
 
 function OfflineBanner() {
   const isOnline = useOnlineStatus();
@@ -36,14 +37,18 @@ function AppLayout() {
   const isOnline = useOnlineStatus();
   const location = useLocation();
   const isAuthCallback = location.hash?.includes("session_id=");
-  const [skipLanding, setSkipLanding] = useState(
-    () => sessionStorage.getItem("gk_skip_landing") === "1"
-  );
+  const [landingSkipped, setLandingSkipped] = useState(hasSkippedLanding);
+  // Other pages (e.g. the login screen's "skip" link) can set the flag
+  // via a plain navigation rather than this component's state, so re-sync
+  // whenever the route changes instead of only trusting local state.
+  useEffect(() => {
+    if (hasSkippedLanding()) setLandingSkipped(true);
+  }, [location.pathname]);
   const enterApp = () => {
-    sessionStorage.setItem("gk_skip_landing", "1");
-    setSkipLanding(true);
+    skipLanding();
+    setLandingSkipped(true);
   };
-  const showLanding = !loading && !user && !skipLanding;
+  const showLanding = !loading && !user && !landingSkipped;
 
   if (loading) {
     return (

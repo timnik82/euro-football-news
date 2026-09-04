@@ -13,6 +13,8 @@ function ScorePreviewRow({ match }) {
   const isLive = match.status === "IN_PLAY" || match.status === "PAUSED";
   const isFinished = match.status === "FINISHED";
   const ft = match.score?.fullTime || {};
+  const homeScore = isLive ? (ft.home ?? match.score?.halfTime?.home ?? "-") : ft.home;
+  const awayScore = isLive ? (ft.away ?? match.score?.halfTime?.away ?? "-") : ft.away;
   let timeLabel = "";
   try {
     timeLabel = format(parseISO(match.utcDate), "HH:mm");
@@ -33,7 +35,7 @@ function ScorePreviewRow({ match }) {
       <div className="px-3 flex-shrink-0">
         {isFinished || isLive ? (
           <span className="font-black text-sky-500">
-            {ft.home ?? "-"} - {ft.away ?? "-"}
+            {homeScore} - {awayScore}
           </span>
         ) : (
           <span className="text-xs font-bold text-slate-400">{timeLabel}</span>
